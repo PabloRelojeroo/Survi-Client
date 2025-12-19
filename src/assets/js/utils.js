@@ -55,16 +55,20 @@ async function addAccount(data) {
     let div = document.createElement("div");
     div.classList.add("account");
     div.id = data.ID;
+    // Defensive fields: some auth providers return different keys
+    const displayName = data?.name ?? data?.username ?? data?.profile?.name ?? data?.profile?.displayName ?? data?.meta?.name ?? 'Unknown';
+    const uuid = data?.uuid ?? data?.id ?? data?.profile?.id ?? data?.profile?.uuid ?? '';
+
     div.innerHTML = `
         <div class="profile-image" ${skin ? 'style="background-image: url(' + skin + ');"' : ''}></div>
         <div class="profile-infos">
-            <div class="profile-pseudo">${data.name}</div>
-            <div class="profile-uuid">${data.uuid}</div>
+            <div class="profile-pseudo">${displayName}</div>
+            <div class="profile-uuid">${uuid}</div>
         </div>
         <div class="delete-profile" id="${data.ID}">
             <div class="icon-account-delete delete-profile-icon"></div>
         </div>
-    `
+    `;
     return document.querySelector('.accounts-list').appendChild(div);
 }
 

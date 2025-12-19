@@ -151,9 +151,22 @@ class Splash {
     }
 }
 
-ipcRenderer.on('splash-fade-out', () => {
-    document.body.style.transition = "opacity 1s ease";
-    document.body.style.opacity = "0";
+ipcRenderer.on('splash-fade-out', async () => {
+    // First, apply a soft blur to splash elements so logos/texts diffuse before the fade
+    try {
+        const splashContainer = document.querySelector('#splash');
+        if (splashContainer) {
+            splashContainer.classList.add('pre-blur');
+            // give the blur a moment to animate
+            await sleep(250);
+        }
+    } catch (e) {}
+
+    // Then fade the whole document out
+    try {
+        document.documentElement.style.transition = "opacity 1s ease";
+        document.documentElement.style.opacity = "0";
+    } catch (e) {}
 });
 
 function sleep(ms) {

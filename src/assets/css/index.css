@@ -160,3 +160,14 @@ img {
 .expansion-container.fade-out {
     opacity: 0;
 }
+
+/* Pre-blur state: apply a soft blur to all splash elements before starting transition */
+.expansion-container.pre-blur .splash,
+.expansion-container.pre-blur .splash-message,
+.expansion-container.pre-blur .splash-author,
+.expansion-container.pre-blur .message,
+.expansion-container.pre-blur .progress {
+    filter: blur(6px);
+    opacity: 0.6;
+    transition: filter 250ms ease, opacity 250ms ease;
+}
