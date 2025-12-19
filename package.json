@@ -1,0 +1,45 @@
+{
+    "name": "Survi-Client",
+    "preductname": "Survi Client",
+    "version": "1.0.1",
+    "description": "Launcher desarrollado por PabloRelojeroDev para la survicomunidad",
+    "main": "src/app.js",
+    "author": {
+        "name": "PabloRelojero",
+        "email": "pablorelojerodev@gmail.com",
+        "url": "https://github.com/PabloRelojeroo"
+    },
+    "url": "https://launchertest.pablorelojerio.online",
+    "scripts": {
+        "start": "cross-env-shell NODE_ENV=dev electron .",
+        "dev": "cross-env-shell DEV_TOOL=open nodemon --exec npm start",
+        "build": "node build.js --obf=true --build=platform",
+        "icon": "node build.js --icon=https://launchertest.pablorelojerio.online/icon.png"
+    },
+    "license": "CCANC",
+    "nodemonConfig": {
+        "ext": "js,html,css",
+        "ignore": "**/test"
+    },
+    "dependencies": {
+        "electron-updater": "^6.6.2",
+        "minecraft-java-core": "^4.2.3",
+        "node-bdd": "^2.0.4",
+        "node-fetch": "^2.7.0",
+        "xml-js": "^1.6.11",
+        "discord-rpc": "^4.0.1"
+    },
+    "devDependencies": {
+        "cross-env": "^10.1.0",
+        "electron": "28",
+        "electron-builder": "^26.0.12",
+        "javascript-obfuscator": "^4.1.1",
+        "jimp": "^1.6.0",
+        "nodemon": "^3.1.11",
+        "png2icons": "^2.0.1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/PabloRelojeroo/Survi-Client.git"
+    }
+}
