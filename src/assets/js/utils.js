@@ -1,6 +1,6 @@
 /**
  * @author Pablo
- * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
+ * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
  */
 
 const { ipcRenderer } = require('electron')
@@ -79,8 +79,7 @@ async function accountSelect(data) {
 
 async function headplayer(skinBase64) {
     let skin = await new skin2D().creatHeadTexture(skinBase64);
-    let head = document.querySelector(".player-head");
-    if (head) head.style.backgroundImage = `url(${skin})`;
+    document.querySelector(".player-head").style.backgroundImage = `url(${skin})`;
 }
 
 async function setStatus(opt) {
