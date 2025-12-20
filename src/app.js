@@ -32,9 +32,33 @@ else app.whenReady().then(() => {
 
 ipcMain.on('main-window-open', () => MainWindow.createWindow())
 ipcMain.on('main-window-dev-tools', () => {
-    const win = MainWindow.getWindow();
-    if (!win) return console.warn('main-window-dev-tools: main window not available');
-    try { win.webContents.openDevTools({ mode: 'detach' }) } catch (e) { console.warn(e) }
+    console.log('main-window-dev-tools event received');
+    let win = MainWindow.getWindow();
+    if (!win) {
+        console.warn('main-window-dev-tools: main window not available, creating it...');
+        MainWindow.createWindow();
+        win = MainWindow.getWindow();
+        if (!win) return console.warn('main-window-dev-tools: failed to create main window');
+        try {
+            win.webContents.once('did-finish-load', () => {
+                try { 
+                    console.log('Opening devtools after window load');
+                    win.webContents.openDevTools({ mode: 'detach' }) 
+                } catch (e) { 
+                    console.error('Error opening devtools:', e) 
+                }
+            });
+        } catch (e) { 
+            console.error('Error setting up devtools listener:', e) 
+        }
+        return;
+    }
+    try { 
+        console.log('Opening devtools directly');
+        win.webContents.openDevTools({ mode: 'detach' }) 
+    } catch (e) { 
+        console.error('Error opening devtools:', e) 
+    }
 })
 ipcMain.on('main-window-dev-tools-close', () => {
     const win = MainWindow.getWindow();
@@ -70,8 +94,19 @@ ipcMain.on('main-window-minimize', () => {
 
 ipcMain.on('update-window-close', () => UpdateWindow.destroyWindow())
 ipcMain.on('update-window-dev-tools', () => {
-    const win = UpdateWindow.getWindow();
-    if (!win) return console.warn('update-window-dev-tools: update window not available');
+    let win = UpdateWindow.getWindow();
+    if (!win) {
+        console.warn('update-window-dev-tools: update window not available, creating it...');
+        UpdateWindow.createWindow();
+        win = UpdateWindow.getWindow();
+        if (!win) return console.warn('update-window-dev-tools: failed to create update window');
+        try {
+            win.webContents.once('did-finish-load', () => {
+                try { win.webContents.openDevTools({ mode: 'detach' }) } catch (e) { console.warn(e) }
+            });
+        } catch (e) { console.warn(e) }
+        return;
+    }
     try { win.webContents.openDevTools({ mode: 'detach' }) } catch (e) { console.warn(e) }
 })
 ipcMain.on('update-window-progress', (event, options) => {
@@ -159,15 +194,24 @@ ipcMain.handle('path-user-data', () => app.getPath('userData'))
 ipcMain.handle('appData', e => app.getPath('appData'))
 
 ipcMain.on('main-window-maximize', () => {
-    if (MainWindow.getWindow().isMaximized()) {
-        MainWindow.getWindow().unmaximize();
-    } else {
-        MainWindow.getWindow().maximize();
-    }
+    const win = MainWindow.getWindow();
+    if (!win) return console.warn('main-window-maximize: main window not available');
+    try {
+        if (win.isMaximized()) win.unmaximize();
+        else win.maximize();
+    } catch (e) { console.warn(e) }
 })
 
-ipcMain.on('main-window-hide', () => MainWindow.getWindow().hide())
-ipcMain.on('main-window-show', () => MainWindow.getWindow().show())
+ipcMain.on('main-window-hide', () => {
+    const win = MainWindow.getWindow();
+    if (!win) return console.warn('main-window-hide: main window not available');
+    try { win.hide() } catch (e) { console.warn(e) }
+})
+ipcMain.on('main-window-show', () => {
+    const win = MainWindow.getWindow();
+    if (!win) return console.warn('main-window-show: main window not available');
+    try { win.show() } catch (e) { console.warn(e) }
+})
 
 ipcMain.handle('Microsoft-window', async (_, client_id) => {
     return await new Microsoft(client_id).getAuth();

@@ -55,9 +55,36 @@ async function addAccount(data) {
     let div = document.createElement("div");
     div.classList.add("account");
     div.id = data.ID;
-    // Defensive fields: some auth providers return different keys
-    const displayName = data?.name ?? data?.username ?? data?.profile?.name ?? data?.profile?.displayName ?? data?.meta?.name ?? 'Unknown';
-    const uuid = data?.uuid ?? data?.id ?? data?.profile?.id ?? data?.profile?.uuid ?? '';
+    
+    const displayName = data?.name
+        || data?.username
+        || data?.displayName
+        || data?.display_name
+        || data?.profile?.name
+        || data?.profile?.displayName
+        || data?.meta?.name
+        || data?.selectedProfile?.name
+        || data?.availableProfiles?.[0]?.name
+        || 'Unknown';
+    
+    const uuid = data?.uuid 
+        || data?.id 
+        || data?.profile?.id 
+        || data?.profile?.uuid 
+        || data?.selectedProfile?.id 
+        || data?.meta?.uuid
+        || '';
+
+    if (!data?.name && displayName === 'Unknown') {
+        console.warn('addAccount: missing name fields, data structure:', {
+            hasName: !!data?.name,
+            hasUsername: !!data?.username,
+            hasProfile: !!data?.profile,
+            profileName: data?.profile?.name,
+            meta: data?.meta,
+            keys: Object.keys(data || {})
+        });
+    }
 
     div.innerHTML = `
         <div class="profile-image" ${skin ? 'style="background-image: url(' + skin + ');"' : ''}></div>

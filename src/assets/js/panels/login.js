@@ -97,37 +97,82 @@ class Login {
         })
     }
 
-    async getMicrosoft() {
-        console.log('Initializing Microsoft login...');
-        let popupLogin = new popup();
-        let loginHome = document.querySelector('.login-home');
-        let microsoftBtn = document.querySelector('.connect-home');
+async getMicrosoft() {
+    console.log('Initializing Microsoft login...');
+    let popupLogin = new popup();
+    let microsoftBtn = document.querySelector('.connect-home');
 
-        microsoftBtn.addEventListener("click", () => {
+    microsoftBtn.addEventListener("click", () => {
+        popupLogin.openPopup({
+            title: 'Conexión',
+            content: 'Por favor espera...',
+            color: 'var(--color)'
+        });
+
+        ipcRenderer.invoke('Microsoft-window', this.config.client_id).then(async account_connect => {
+            if (account_connect == 'cancel' || !account_connect) {
+                popupLogin.closePopup();
+                return;
+            }
+            
+            console.log('=== MICROSOFT LOGIN - Raw Response ===');
+            console.log(JSON.stringify(account_connect, null, 2));
+            
+            const normalizedAccount = this.normalizeMicrosoftAccount(account_connect);
+            
+            console.log('=== MICROSOFT LOGIN - Normalized ===');
+            console.log(JSON.stringify(normalizedAccount, null, 2));
+            
+            await this.saveData(normalizedAccount);
+            popupLogin.closePopup();
+
+        }).catch(err => {
+            console.error('Microsoft login error:', err);
             popupLogin.openPopup({
-                title: 'Conexión',
-                content: 'Por favor espera...',
-                color: 'var(--color)'
+                title: 'Error',
+                content: err,
+                options: true
             });
+        });
+    });
+}
 
-            ipcRenderer.invoke('Microsoft-window', this.config.client_id).then(async account_connect => {
-                if (account_connect == 'cancel' || !account_connect) {
-                    popupLogin.closePopup();
-                    return;
-                } else {
-                    await this.saveData(account_connect)
-                    popupLogin.closePopup();
-                }
-
-            }).catch(err => {
-                popupLogin.openPopup({
-                    title: 'Error',
-                    content: err,
-                    options: true
-                });
-            });
-        })
-    }
+normalizeMicrosoftAccount(account) {
+    const name = account.name 
+        || account.username 
+        || account.displayName
+        || account.display_name
+        || account.profile?.name 
+        || account.profile?.displayName
+        || account.selectedProfile?.name
+        || account.meta?.name
+        || 'Unknown';
+    
+    const uuid = account.uuid 
+        || account.id 
+        || account.profile?.id 
+        || account.profile?.uuid
+        || account.selectedProfile?.id
+        || '';
+    
+    return {
+        name: name,
+        uuid: uuid,
+        
+        access_token: account.access_token,
+        client_token: account.client_token,
+        refresh_token: account.refresh_token,
+        
+        meta: account.meta || { type: 'Xbox' },
+        
+        profile: account.profile || {},
+        
+        ...account,
+        
+        name: name,
+        uuid: uuid
+    };
+}
 
     async getCrack() {
         console.log('Initializing offline login...');
@@ -259,6 +304,14 @@ class Login {
     }
 
     async saveData(connectionData) {
+
+        const extractedName = connectionData.name 
+        || connectionData.username 
+        || connectionData.profile?.name 
+        || connectionData.displayName
+        || 'Unknown';
+
+
         let configClient = await this.db.readData('configClient');
         let account = await this.db.createData('accounts', connectionData)
         let instanceSelect = configClient.instance_select
