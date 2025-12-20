@@ -1,5 +1,5 @@
 const { Client } = require('discord-rpc');
-const clientId = '1334505672875835475';
+const clientId = '1451931381973389525';
 
 class DiscordRPC {
     constructor() {

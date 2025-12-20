@@ -107,25 +107,20 @@ class InstanceAssetsHandler {
         }
 
         img.onerror = () => {
-            console.warn(`⚠️ Error al cargar el logo para ${instance.name}, usando logo por defecto`);
             img.src = this.defaultAssets.logo;
         };
 
         img.onload = () => {
-            console.log(`✅ Logo cargado exitosamente para ${instance.name}`);
         };
 
         img.src = logo;
         container.appendChild(img);
         
-        console.log(`✅ Contenedor creado con ID: ${container.id}`);
         
         if (onClick) {
             container.addEventListener('click', async () => {
-                console.log(`🖱️ Click detectado en logo: ${instance.name}`);
                 
                 if (container.classList.contains('active-instance')) {
-                    console.log('⚠️ Esta instancia ya está activa');
                     return;
                 }
 
@@ -140,7 +135,7 @@ class InstanceAssetsHandler {
                     await this.updateInstanceBackground(instance);
                     onClick(instance);
                 } catch (error) {
-                    console.error('❌ Error al actualizar el fondo:', error);
+                    console.error('Error al actualizar el fondo:', error);
                 }
             });
         }
@@ -149,16 +144,13 @@ class InstanceAssetsHandler {
     }
 
     async updateInstanceBackground(instance) {
-        console.log('Actualizando fondo para instancia:', instance.name);
         
         return new Promise((resolve, reject) => {
             const { background } = this.getInstanceAssets(instance);
-            console.log('URL del fondo:', background);
 
             const img = new Image();
             
             img.onload = () => {
-                console.log('Imagen de fondo cargada exitosamente');
                 
                 // Transición suave con opacity
                 document.body.style.opacity = '0.7';
