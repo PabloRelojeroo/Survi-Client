@@ -1,8 +1,6 @@
 /**
- * @author Luuxis - FIXED BY ENTERPRISE STANDARDS
- * Luuxis License v1.0
- * 
- * INSTRUCCIONES: Reemplazar TODO el archivo login.js con este código
+ * @author Luuxis - FIXED ENTERPRISE
+ * REEMPLAZAR TODO login.js CON ESTE CÓDIGO
  */
 
 const { AZauth, Mojang } = require('minecraft-java-core');
@@ -132,16 +130,66 @@ class Login {
                         
                         console.log('✅ Microsoft account received');
                         
+                        // DIAGNÓSTICO COMPLETO
+                        console.log('=== ESTRUCTURA COMPLETA DEL OBJETO ===');
+                        console.log('Todas las keys:', Object.keys(account_connect));
+                        console.log('Objeto completo (stringify):', JSON.stringify(account_connect, null, 2));
+                        
+                        // Inspeccionar cada nivel
+                        console.log('--- NIVEL 1 ---');
+                        console.log('name:', account_connect.name);
+                        console.log('username:', account_connect.username);
+                        console.log('displayName:', account_connect.displayName);
+                        console.log('display_name:', account_connect.display_name);
+                        
+                        console.log('--- NIVEL 2: profile ---');
+                        if (account_connect.profile) {
+                            console.log('profile keys:', Object.keys(account_connect.profile));
+                            console.log('profile.name:', account_connect.profile.name);
+                            console.log('profile.displayName:', account_connect.profile.displayName);
+                        } else {
+                            console.log('profile: NO EXISTE');
+                        }
+                        
+                        console.log('--- NIVEL 2: meta ---');
+                        if (account_connect.meta) {
+                            console.log('meta keys:', Object.keys(account_connect.meta));
+                            console.log('meta.name:', account_connect.meta.name);
+                            console.log('meta.type:', account_connect.meta.type);
+                        } else {
+                            console.log('meta: NO EXISTE');
+                        }
+                        
+                        console.log('--- NIVEL 2: selectedProfile ---');
+                        if (account_connect.selectedProfile) {
+                            console.log('selectedProfile keys:', Object.keys(account_connect.selectedProfile));
+                            console.log('selectedProfile.name:', account_connect.selectedProfile.name);
+                        } else {
+                            console.log('selectedProfile: NO EXISTE');
+                        }
+                        
+                        console.log('--- OTROS CAMPOS POSIBLES ---');
+                        console.log('xboxGamertag:', account_connect.xboxGamertag);
+                        console.log('gamertag:', account_connect.gamertag);
+                        console.log('user:', account_connect.user);
+                        console.log('mcToken:', account_connect.mcToken);
+                        
                         const normalizedAccount = this.normalizeMicrosoftAccount(account_connect);
                         
+                        // Permitir continuar incluso si el nombre es Unknown
+                        // (el usuario puede cambiarlo después si es necesario)
                         if (!normalizedAccount.name || normalizedAccount.name === 'Unknown') {
-                            throw new Error('No se pudo obtener el nombre de usuario');
+                            console.warn('⚠️ No se pudo extraer nombre, usando UUID como nombre');
+                            normalizedAccount.name = normalizedAccount.uuid.substring(0, 8);
                         }
+                        
+                        console.log('✅ Proceeding with account:', normalizedAccount.name);
                         
                         await this.saveData(normalizedAccount);
                         popupLogin.closePopup();
                     } catch (error) {
                         console.error('❌ Error processing Microsoft account:', error);
+                        console.error('Error stack:', error.stack);
                         popupLogin.openPopup({
                             title: 'Error',
                             content: error.message || 'Error al procesar la cuenta',
@@ -165,24 +213,45 @@ class Login {
     normalizeMicrosoftAccount(account) {
         console.log('🔄 Normalizing Microsoft account...');
         
-        const name = account.name 
-            || account.username 
-            || account.displayName
-            || account.display_name
-            || account.profile?.name 
-            || account.profile?.displayName
-            || account.selectedProfile?.name
-            || account.meta?.name
-            || account.xboxGamertag
-            || 'Unknown';
+        // EXPLORAR TODAS LAS RUTAS POSIBLES
+        const possibleNames = [
+            account.name,
+            account.username,
+            account.displayName,
+            account.display_name,
+            account.profile?.name,
+            account.profile?.displayName,
+            account.selectedProfile?.name,
+            account.meta?.name,
+            account.xboxGamertag,
+            account.gamertag,
+            account.user?.name,
+            account.user?.username,
+            account.mcToken?.profile?.name,
+            // Buscar en propiedades anidadas
+            this.deepSearch(account, 'name'),
+            this.deepSearch(account, 'username'),
+            this.deepSearch(account, 'displayName'),
+            this.deepSearch(account, 'gamertag')
+        ];
         
-        const uuid = account.uuid 
-            || account.id 
-            || account.profile?.id 
-            || account.profile?.uuid
-            || account.selectedProfile?.id
-            || account.meta?.uuid
-            || this.generateOfflineUUID(name);
+        console.log('🔍 Nombres encontrados:', possibleNames.filter(n => n));
+        
+        const name = possibleNames.find(n => n && n !== 'Unknown' && n.length > 0) || 'Unknown';
+        
+        const possibleUUIDs = [
+            account.uuid,
+            account.id,
+            account.profile?.id,
+            account.profile?.uuid,
+            account.selectedProfile?.id,
+            account.meta?.uuid,
+            account.user?.id,
+            this.deepSearch(account, 'uuid'),
+            this.deepSearch(account, 'id')
+        ];
+        
+        const uuid = possibleUUIDs.find(u => u && u.length > 0) || this.generateOfflineUUID(name);
         
         console.log(`✅ Normalized: ${name} (${uuid})`);
         
@@ -207,6 +276,24 @@ class Login {
             name: name,
             uuid: uuid
         };
+    }
+
+    deepSearch(obj, key) {
+        // Búsqueda recursiva profunda de una clave
+        if (!obj || typeof obj !== 'object') return null;
+        
+        if (obj.hasOwnProperty(key) && obj[key]) {
+            return obj[key];
+        }
+        
+        for (let k in obj) {
+            if (typeof obj[k] === 'object') {
+                const result = this.deepSearch(obj[k], key);
+                if (result) return result;
+            }
+        }
+        
+        return null;
     }
 
     generateOfflineUUID(username) {
@@ -416,11 +503,8 @@ class Login {
                 || connectionData.profile?.name 
                 || connectionData.displayName
                 || connectionData.selectedProfile?.name
-                || 'Unknown';
-
-            if (extractedName === 'Unknown') {
-                throw new Error('No se pudo determinar el nombre de usuario');
-            }
+                || connectionData.uuid?.substring(0, 8) // Usar primeros 8 chars del UUID como fallback
+                || 'Player';
 
             console.log(`✅ Account name: ${extractedName}`);
 
@@ -440,6 +524,11 @@ class Login {
                         intelEnabledMac: true
                     }
                 };
+            }
+
+            // Asegurar que el nombre está en el objeto antes de guardar
+            if (!connectionData.name || connectionData.name === 'Unknown') {
+                connectionData.name = extractedName;
             }
 
             let account = await this.db.createData('accounts', connectionData);
@@ -473,6 +562,7 @@ class Login {
 
         } catch (error) {
             console.error('❌ Error saving account:', error);
+            console.error('Stack:', error.stack);
             throw error;
         }
     }
