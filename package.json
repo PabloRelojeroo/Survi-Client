@@ -1,7 +1,7 @@
 {
     "name": "Survi-Client",
     "preductname": "Survi Client",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "description": "Launcher desarrollado por PabloRelojeroDev para la survicomunidad",
     "main": "src/app.js",
     "author": {

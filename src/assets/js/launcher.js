@@ -13,7 +13,6 @@ const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const os = require('os');
 
-
 class Launcher {
     async init() {
         this.initLog();
@@ -31,9 +30,8 @@ class Launcher {
 
     initLog() {
         document.addEventListener('keydown', e => {
-            if ((e.ctrlKey && e.shiftKey && e.keyCode == 73) || e.keyCode == 123) {
-                e.preventDefault();
-                console.log('DevTools shortcut triggered');
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 73 || e.keyCode == 123) {
+                ipcRenderer.send('main-window-dev-tools-close');
                 ipcRenderer.send('main-window-dev-tools');
             }
         })
@@ -140,40 +138,36 @@ class Launcher {
                     await this.db.deleteData('accounts', account_ID)
                     continue
                 }
-        if (account.meta.type === 'Xbox') {
-            console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
-            console.log('FULL ACCOUNT DATA:', JSON.stringify(account, null, 2));
-            
-            popupRefresh.openPopup({
-                title: 'Conexión',
-                content: `Actualizando cuenta Tipo: ${account.meta.type} | Usuario: ${account.name}`,
-                color: 'var(--color)',
-                background: false
-            });
-
-            let refresh_accounts = await new Microsoft(this.config.client_id).refresh(account);
-            
-            console.log('REFRESHED ACCOUNT DATA:', JSON.stringify(refresh_accounts, null, 2));
-
-            if (refresh_accounts.error) {
-                await this.db.deleteData('accounts', account_ID)
-                if (account_ID == account_selected) {
-                    configClient.account_selected = null
-                    await this.db.updateData('configClient', configClient)
-                }
-                console.error(`[Account] ${account.name}: ${refresh_accounts.errorMessage}`);
-                continue;
-            }
-
-            refresh_accounts.ID = account_ID
-            await this.db.updateData('accounts', refresh_accounts, account_ID)
-            await addAccount(refresh_accounts)
-            if (account_ID == account_selected) accountSelect(refresh_accounts)
-        } else if (account.meta.type == 'AZauth') {
+                if (account.meta.type === 'Xbox') {
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
-                        title: 'Conexión',
-                        content: `Actualizando cuenta Tipo: ${account.meta.type} | Usuario: ${account.name}`,
+                        title: 'Connexion',
+                        content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
+                        color: 'var(--color)',
+                        background: false
+                    });
+
+                    let refresh_accounts = await new Microsoft(this.config.client_id).refresh(account);
+
+                    if (refresh_accounts.error) {
+                        await this.db.deleteData('accounts', account_ID)
+                        if (account_ID == account_selected) {
+                            configClient.account_selected = null
+                            await this.db.updateData('configClient', configClient)
+                        }
+                        console.error(`[Account] ${account.name}: ${refresh_accounts.errorMessage}`);
+                        continue;
+                    }
+
+                    refresh_accounts.ID = account_ID
+                    await this.db.updateData('accounts', refresh_accounts, account_ID)
+                    await addAccount(refresh_accounts)
+                    if (account_ID == account_selected) accountSelect(refresh_accounts)
+                } else if (account.meta.type == 'AZauth') {
+                    console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
+                    popupRefresh.openPopup({
+                        title: 'Connexion',
+                        content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
                         color: 'var(--color)',
                         background: false
                     });
@@ -196,8 +190,8 @@ class Launcher {
                 } else if (account.meta.type == 'Mojang') {
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
-                        title: 'Conexión',
-                        content: `Actualizando cuenta Tipo: ${account.meta.type} | Usuario: ${account.name}`,
+                        title: 'Connexion',
+                        content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
                         color: 'var(--color)',
                         background: false
                     });
@@ -228,7 +222,7 @@ class Launcher {
                     await addAccount(refresh_accounts)
                     if (account_ID == account_selected) accountSelect(refresh_accounts)
                 } else {
-                    console.error(`[Account] ${account.name}: Tipo de cuenta no encontrado`);
+                    console.error(`[Account] ${account.name}: Account Type Not Found`);
                     this.db.deleteData('accounts', account_ID)
                     if (account_ID == account_selected) {
                         configClient.account_selected = null
