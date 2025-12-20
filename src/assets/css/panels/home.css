@@ -7,7 +7,6 @@
         opacity: 0;
         transform: translateY(10px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -15,12 +14,9 @@
 }
 
 @keyframes pulse {
-
-    0%,
-    100% {
+    0%, 100% {
         transform: scale(1);
     }
-
     50% {
         transform: scale(1.05);
     }
@@ -30,24 +26,15 @@
     0% {
         background-position: -1000px 0;
     }
-
     100% {
         background-position: 1000px 0;
     }
 }
 
 @keyframes gradient-shift {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 
@@ -300,7 +287,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    align-items: center;
+    align-items:  center;
     width: 90px;
     height: 100vh;
 }
@@ -317,8 +304,6 @@
     margin-top: 2rem;
     max-height: 60vh;
     overflow-y: auto;
-    overflow-x: hidden;
-    /* Fix horizontal scroll */
     animation: fadeIn 0.6s ease-out 0.2s both;
     position: relative;
 }
@@ -676,10 +661,10 @@
 }
 
 .progress-bar::-webkit-progress-value {
-    background: linear-gradient(90deg,
-            var(--element-color) 0%,
-            #00ff88 50%,
-            var(--element-color) 100%);
+    background: linear-gradient(90deg, 
+        var(--element-color) 0%, 
+        #00ff88 50%, 
+        var(--element-color) 100%);
     background-size: 200% 100%;
     animation: shimmer 2s linear infinite;
     border-radius: 20px;
@@ -791,14 +776,10 @@
 }
 
 @keyframes loading {
-
-    0%,
-    80%,
-    100% {
+    0%, 80%, 100% {
         transform: scale(0);
         opacity: 0.5;
     }
-
     40% {
         transform: scale(1);
         opacity: 1;
@@ -990,20 +971,20 @@ body {
     .sidebar-logos {
         justify-content: center;
     }
-
+    
     .play-btn {
         padding: 0 1.5rem;
         font-size: 1.5rem;
     }
-
+    
     .modal-content {
         padding: 25px;
     }
-
+    
     .status-server {
         width: 90%;
     }
-
+    
     .info-starting-game {
         min-width: 250px;
     }

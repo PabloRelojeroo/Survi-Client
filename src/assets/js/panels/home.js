@@ -1,6 +1,7 @@
 /**
- * @author Luuxis
- * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
+ * @author Pablo
+ * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
+ * VERSIÃ"N CORREGIDA - Logs y gestiÃ³n de procesos
  */
 import { config, database, logger, changePanel, appdata, setStatus, pkg, popup } from '../utils.js'
 
@@ -9,19 +10,21 @@ const { shell, ipcRenderer } = require('electron')
 import DiscordRPC from './discord-rpc.js';
 import InstanceAssetsHandler from './InstanceAssetsHandler.js';
 
+const API_URL = 'https://launchertest.pablorelojerio.online/files/validate_code.php';
+
 class Home {
     static id = "home";
 
     async init(config) {
-        this.config = config
-        this.db = new database()
+        this.config = config;
+        this.db = new database();
         this.rpc = new DiscordRPC();
         await this.rpc.init();
         this.assetsHandler = new InstanceAssetsHandler();
 
         this.currentSelectedInstance = null;
         this.isGameLaunching = false;
-        this.playButtonHandler = null; 
+        this.playButtonHandler = null;
 
         await this.loadInstanceAssets();
         this.socialLick()
@@ -51,16 +54,18 @@ class Home {
     }
 
     async selectInstance(instance) {
+        // Seleccionando instancia
+
         try {
             if (!this.assetsHandler) {
-                console.error('assetsHandler no está inicializado');
+                console.error('❌ assetsHandler no está inicializado');
                 return;
             }
 
             this.currentSelectedInstance = instance;
 
             const configClient = await this.db.readData('configClient');
-            configClient.instance_select = instance.name;
+            configClient.instance_selct = instance.name;
             await this.db.updateData('configClient', configClient);
 
             await this.assetsHandler.updateInstanceBackground(instance);
@@ -70,12 +75,15 @@ class Home {
             if (this.rpc) {
                 this.rpc.updateForInstance(instance.name);
             }
+
+            // Instancia seleccionada
         } catch (error) {
-            console.error('Error al seleccionar instancia:', error);
+            console.error('❌ Error al seleccionar instancia:', error);
         }
     }
 
     async loadInstanceAssets() {
+        console.log('📦 Cargando assets de instancias...');
 
         try {
             const configClient = await this.db.readData('configClient');
@@ -99,7 +107,7 @@ class Home {
             const playerOptions = document.querySelector('.player-options');
 
             if (!sidebar || !playerOptions) {
-                console.error('No se encontró sidebar o playerOptions');
+                console.error('❌ No se encontró sidebar o playerOptions');
                 return;
             }
 
@@ -130,8 +138,9 @@ class Home {
                 }
             }
 
+            console.log(`✅ ${instancesLoaded} instancias cargadas`);
 
-            const savedInstanceName = configClient.instance_select;
+            const savedInstanceName = configClient.instance_selct;
             if (savedInstanceName) {
                 const instanceToRestore = instancesList.find(i => i.name === savedInstanceName);
 
@@ -147,11 +156,13 @@ class Home {
             }
 
         } catch (error) {
-            console.error('Error en loadInstanceAssets:', error);
+            console.error('❌ Error en loadInstanceAssets:', error);
         }
     }
 
     async reloadInstances() {
+        // Recargando instancias
+
         try {
             const sidebarLogos = document.querySelector('.sidebar-logos');
             if (sidebarLogos) {
@@ -164,8 +175,10 @@ class Home {
             await new Promise(resolve => setTimeout(resolve, 150));
 
             await this.loadInstanceAssets();
+
+            // Recarga completada
         } catch (error) {
-            console.error('Error en reloadInstances:', error);
+            console.error('❌ Error en reloadInstances:', error);
         }
     }
 
@@ -230,7 +243,6 @@ class Home {
         const input = document.querySelector('.instance-code-modal .modal-input');
         const code = input.value.trim();
         const btn = document.getElementById('submit-code');
-        const API_URL = 'https://launchertest.pablorelojerio.online/files/validate_code.php';
 
         if (!code) return;
 
@@ -241,6 +253,8 @@ class Home {
         try {
             const configClient = await this.db.readData('configClient');
             const auth = await this.db.readData('accounts', configClient.account_selected);
+
+            // Generar timestamp y firma HMAC
             const timestamp = Math.floor(Date.now() / 1000);
             const dataToSign = {
                 code: code,
@@ -248,6 +262,7 @@ class Home {
                 timestamp: timestamp
             };
 
+            // Generar firma HMAC usando crypto nativo de Node.js
             const crypto = require('crypto');
             const HMAC_SECRET = 'f2e1d0c9b8a7z6y5x4w3v2u1t0s9r8q7p6o5n4m3l2k1j0i9h8g7f6e5d4c3b2a1';
             const signature = crypto.createHmac('sha256', HMAC_SECRET)
@@ -269,15 +284,22 @@ class Home {
 
             if (result.success) {
                 await this.saveUserAccessCode(auth?.name, result.instance);
+
                 await new Promise(resolve => setTimeout(resolve, 500));
+
                 this.closeInstanceCodeModal();
+
                 await this.reloadInstances();
 
                 const instancesList = await config.getInstanceList();
                 const newInstance = instancesList.find(i => i.name === result.instance);
-                if (newInstance) await this.selectInstance(newInstance);
 
-                new popup().openPopup({
+                if (newInstance) {
+                    await this.selectInstance(newInstance);
+                }
+
+                const popupSuccess = new popup();
+                popupSuccess.openPopup({
                     title: '¡Acceso Concedido!',
                     content: `Has desbloqueado la instancia: ${result.instanceDisplay || result.instance}`,
                     color: 'green',
@@ -289,8 +311,9 @@ class Home {
             }
 
         } catch (error) {
-            console.error('Error validando código:', error);
-            new popup().openPopup({
+            console.error('❌ Error validando código:', error);
+            const popupError = new popup();
+            popupError.openPopup({
                 title: 'Error',
                 content: error.message || 'No se pudo conectar con el servidor.',
                 color: 'red',
@@ -306,41 +329,42 @@ class Home {
         try {
             const storageKey = 'userAccessCodes';
             let accessCodes = {};
+
             try {
                 const stored = localStorage.getItem(storageKey);
-                if (stored) accessCodes = JSON.parse(stored);
-            } catch (e) { accessCodes = {}; }
+                if (stored) {
+                    accessCodes = JSON.parse(stored);
+                }
+            } catch (e) {
+                accessCodes = {};
+            }
 
-            if (!Array.isArray(accessCodes[username])) accessCodes[username] = [];
-            if (!accessCodes[username].includes(instanceName)) accessCodes[username].push(instanceName);
+            if (!Array.isArray(accessCodes[username])) {
+                accessCodes[username] = [];
+            }
+
+            if (!accessCodes[username].includes(instanceName)) {
+                accessCodes[username].push(instanceName);
+            }
 
             localStorage.setItem(storageKey, JSON.stringify(accessCodes));
-        } catch (error) {
-            console.error('Error en saveUserAccessCode:', error);
-        }
-    }
 
-    async getUserAccessCodes(username) {
-        let codes = [];
-        try {
-            const stored = localStorage.getItem('userAccessCodes');
-            if (stored) {
-                const accessCodes = JSON.parse(stored);
-                if (accessCodes[username] && Array.isArray(accessCodes[username])) {
-                    codes = [...accessCodes[username]];
-                }
+            const verifyStorage = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+            if (verifyStorage[username] && verifyStorage[username].includes(instanceName)) {
+                return true;
             }
-        } catch (e) {
-            console.warn('Error leyendo códigos de acceso');
+
+            throw new Error('No se pudo guardar el acceso');
+
+        } catch (error) {
+            console.error('❌ Error en saveUserAccessCode:', error);
+            throw error;
         }
-        return codes;
     }
-
-
 
     socialLick() {
         let socials = document.querySelectorAll('.social-block')
-
         socials.forEach(social => {
             social.addEventListener('click', e => {
                 shell.openExternal(e.target.dataset.url)
@@ -354,13 +378,16 @@ class Home {
             const configClient = await this.db.readData('configClient');
             const auth = await this.db.readData('accounts', configClient.account_selected);
 
+            // Remover event listener previo si existe
             if (this.playButtonHandler) {
                 elements.instanceBTN.removeEventListener('click', this.playButtonHandler);
             }
 
+            // Crear nuevo handler
             this.playButtonHandler = async () => {
+                // Prevenir múltiples lanzamientos simultáneos
                 if (this.isGameLaunching) {
-                    console.log('Ya hay un juego iniciándose...');
+                    console.log('⚠️ Ya hay un juego iniciándose...');
                     return;
                 }
 
@@ -368,17 +395,19 @@ class Home {
                 if (!currentInstance) {
                     const instancesList = await config.getInstanceList();
                     const configClient = await this.db.readData('configClient');
-                    currentInstance = instancesList.find(i => i.name === configClient.instance_select);
+                    currentInstance = instancesList.find(i => i.name === configClient.instance_selct);
                 }
 
                 if (!currentInstance) {
-                    new popup().openPopup({ title: 'Selecciona una instancia', content: 'Debes seleccionar una instancia antes de jugar.', color: 'orange', options: true });
+                    const popupError = new popup();
+                    popupError.openPopup({ title: 'Selecciona una instancia', content: 'Debes seleccionar una instancia antes de jugar.', color: 'orange', options: true });
                     return;
                 }
 
                 const userAccess = await this.getUserAccessCodes(auth?.name);
                 if (!this.checkInstanceAccess(currentInstance, auth?.name, userAccess)) {
-                    new popup().openPopup({ title: 'Acceso Denegado', content: 'No tienes permiso para jugar esta instancia.', color: 'red', options: true });
+                    const popupError = new popup();
+                    popupError.openPopup({ title: 'Acceso Denegado', content: 'No tienes permiso para jugar esta instancia.', color: 'red', options: true });
                     return;
                 }
 
@@ -396,388 +425,248 @@ class Home {
         }
     }
 
-// Reemplaza la función startGame completa en home.js con esta versión mejorada
+    async getUserAccessCodes(username) {
+        let codes = [];
 
-async startGame() {
-    this.isGameLaunching = true;
-
-    try {
-        console.log('=== 🚀 INICIO startGame ===');
-        
-        // 1. INICIALIZACIÓN
-        let launch = new Launch();
-        console.log('✅ Launch instance created');
-        
-        let configClient = await this.db.readData('configClient');
-        if (!configClient) {
-            throw new Error("❌ No se pudo cargar la configuración");
-        }
-        console.log('✅ Config loaded');
-        
-        let instance = await config.getInstanceList();
-        console.log(`✅ ${instance.length} instances loaded`);
-        
-        let authenticator = await this.db.readData('accounts', configClient.account_selected);
-        if (!authenticator) {
-            throw new Error("❌ No hay cuenta seleccionada");
-        }
-        console.log('✅ Authenticator loaded:', authenticator.name || 'Unknown');
-
-        // 2. VALIDAR INSTANCIA
-        let options = instance.find(i => i.name == configClient.instance_select);
-        if (!options) options = this.currentSelectedInstance;
-        if (!options) {
-            throw new Error("❌ No se encontró la configuración de la instancia");
-        }
-        console.log('✅ Instance found:', options.name);
-
-        // 3. NORMALIZAR LOADER
-        if (!options.loadder || typeof options.loadder !== 'object') {
-            console.warn('⚠️ Creating default loader structure');
-            options.loadder = {
-                loadder_type: 'none',
-                loadder_version: '',
-                minecraft_version: options.minecraft_version || options.version || '1.20.1'
-            };
-        } else {
-            options.loadder.minecraft_version = options.loadder.minecraft_version 
-                || options.minecraft_version 
-                || options.version 
-                || '1.20.1';
-            options.loadder.loadder_type = options.loadder.loadder_type || 'none';
-            options.loadder.loadder_version = options.loadder.loadder_version || '';
-        }
-        console.log('✅ Loader:', options.loadder);
-
-        // 4. VALIDAR AUTENTICADOR
-        const authName = authenticator.name 
-            || authenticator.username 
-            || authenticator.profile?.name 
-            || 'Unknown';
-            
-        if (authName === 'Unknown') {
-            throw new Error('❌ Nombre de usuario inválido');
-        }
-        console.log('✅ Valid authenticator:', authName);
-
-        // 5. CONSTRUIR OPCIONES DE LANZAMIENTO
-        const appDataPath = await appdata();
-        const dataDir = process.platform == 'darwin' 
-            ? this.config.dataDirectory 
-            : `.${this.config.dataDirectory}`;
-        
-        let opt = {
-            url: options.url,
-            authenticator: authenticator,
-            timeout: 10000,
-            path: `${appDataPath}/${dataDir}`,
-            instance: options.name,
-            version: options.loadder.minecraft_version,
-            detached: configClient.launcher_config.closeLauncher !== "close-all",
-            downloadFileMultiple: configClient.launcher_config.download_multi || 5,
-            intelEnabledMac: configClient.launcher_config.intelEnabledMac !== false,
-            loader: {
-                type: options.loadder.loadder_type || 'none',
-                build: options.loadder.loadder_version || '',
-                enable: options.loadder.loadder_type !== 'none'
-            },
-            verify: options.verify !== false,
-            ignored: Array.isArray(options.ignored) ? [...options.ignored] : [],
-            java: {
-                path: configClient.java_config?.java_path || null,
-            },
-            JVM_ARGS: Array.isArray(options.jvm_args) ? options.jvm_args : [],
-            GAME_ARGS: Array.isArray(options.game_args) ? options.game_args : [],
-            screen: {
-                width: configClient.game_config?.screen_size?.width || 854,
-                height: configClient.game_config?.screen_size?.height || 480
-            },
-            memory: {
-                min: `${(configClient.java_config?.java_memory?.min || 2) * 1024}M`,
-                max: `${(configClient.java_config?.java_memory?.max || 4) * 1024}M`
-            }
-        };
-
-        if (!opt.url) throw new Error('❌ URL no definida');
-        if (!opt.version) throw new Error('❌ Versión no definida');
-        
-        console.log('✅ Launch options built');
-        console.log('Versión:', opt.version);
-        console.log('Path:', opt.path);
-
-        // 6. OBTENER ELEMENTOS UI
-        let playInstanceBTN = document.querySelector('.play-instance');
-        let infoStartingBOX = document.querySelector('.info-starting-game');
-        let infoStarting = document.querySelector(".info-starting-game-text");
-        let progressBar = document.querySelector('.progress-bar');
-
-        // 7. INICIAR JUEGO
-        console.log('🎮 Launching game...');
-        launch.Launch(opt);
-
-        // 8. CONFIGURAR UI
-        this.hidePlayButton();
-        if (infoStartingBOX) infoStartingBOX.style.display = "block";
-        if (progressBar) progressBar.style.display = "block";
-
-        // 9. CREAR UI DE PROGRESO SI NO EXISTE
-        if (!document.querySelector('.download-stats') && infoStartingBOX) {
-            const downloadStats = document.createElement('div');
-            downloadStats.classList.add('download-stats');
-            downloadStats.innerHTML = `
-                <div class="download-speed">0 MB/s</div>
-                <div class="download-eta">...</div>
-            `;
-
-            const percentageDisplay = document.createElement('div');
-            percentageDisplay.classList.add('progress-percentage');
-            percentageDisplay.textContent = '0%';
-
-            const progressContainer = document.createElement('div');
-            progressContainer.classList.add('progress-container');
-            
-            // SAFE APPEND - Verificar que progressBar existe y tiene padre
-            if (progressBar && progressBar.parentNode === infoStartingBOX) {
-                const clonedBar = progressBar.cloneNode(true);
-                progressContainer.appendChild(clonedBar);
-                progressContainer.appendChild(percentageDisplay);
-                
-                try {
-                    // Reemplazar de forma segura
-                    infoStartingBOX.replaceChild(progressContainer, progressBar);
-                    progressBar = clonedBar; // Actualizar referencia
-                } catch (e) {
-                    console.warn('⚠️ Could not replace progressBar, appending instead');
-                    progressContainer.appendChild(percentageDisplay);
-                    infoStartingBOX.appendChild(progressContainer);
-                }
-            } else {
-                // Si no hay progressBar o no tiene el padre correcto
-                progressContainer.appendChild(percentageDisplay);
-                infoStartingBOX.appendChild(progressContainer);
-            }
-
-            // Insertar stats antes del container
-            const firstChild = infoStartingBOX.firstChild;
-            if (firstChild) {
-                infoStartingBOX.insertBefore(downloadStats, firstChild);
-            } else {
-                infoStartingBOX.appendChild(downloadStats);
-            }
-
-            const loadingAnimation = document.createElement('div');
-            loadingAnimation.classList.add('loading-animation');
-            loadingAnimation.innerHTML = '<span class="loading-dots"></span>';
-            infoStartingBOX.appendChild(loadingAnimation);
-        }
-
-        // 10. OBTENER REFERENCIAS UI
-        const downloadSpeed = document.querySelector('.download-speed');
-        const downloadETA = document.querySelector('.download-eta');
-        const percentageDisplay = document.querySelector('.progress-percentage');
-        const loadingAnimation = document.querySelector('.loading-animation');
-
-        ipcRenderer.send('main-window-progress-load');
-
-        // 11. CONFIGURAR EVENT LISTENERS
-        let lastProgressUpdate = Date.now();
-        let lastBytesLoaded = 0;
-        let averageSpeed = 0;
-        let speedSamples = [];
-
-        const calculateAverageSpeed = (newSpeed) => {
-            speedSamples.push(newSpeed);
-            if (speedSamples.length > 5) speedSamples.shift();
-            return speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length;
-        };
-
-        const formatTime = (seconds) => {
-            if (seconds < 60) return `${Math.floor(seconds)}s`;
-            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
-            return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-        };
-
-        launch.on('extract', extract => {
-            console.log('📦 Extracting files...');
-            ipcRenderer.send('main-window-progress-load');
-            if (infoStarting) infoStarting.innerHTML = `Extrayendo archivos`;
-            if (percentageDisplay) percentageDisplay.textContent = 'Preparando...';
-        });
-
-        launch.on('progress', (progress, size) => {
-            if (!isNaN(progress) && isFinite(progress) && !isNaN(size) && isFinite(size) && size > 0) {
-                const now = Date.now();
-                const elapsedSinceLastUpdate = (now - lastProgressUpdate) / 1000;
-                
-                if (elapsedSinceLastUpdate > 0.5) {
-                    const bytesLoaded = progress - lastBytesLoaded;
-                    const instantSpeed = bytesLoaded / elapsedSinceLastUpdate;
-                    
-                    if (instantSpeed > 0) {
-                        averageSpeed = calculateAverageSpeed(instantSpeed);
-                        const speedMBps = (averageSpeed / 1048576).toFixed(2);
-                        if (downloadSpeed) downloadSpeed.textContent = `${speedMBps} MB/s`;
-                        
-                        const remaining = size - progress;
-                        const eta = remaining / averageSpeed;
-                        
-                        if (eta > 0 && eta < 100000 && downloadETA) {
-                            downloadETA.textContent = `Tiempo restante: ${formatTime(eta)}`;
-                        }
-                    }
-                    
-                    lastProgressUpdate = now;
-                    lastBytesLoaded = progress;
-                }
-                
-                const percent = ((progress / size) * 100).toFixed(0);
-                if (infoStarting) infoStarting.innerHTML = `Descargando archivos`;
-                if (percentageDisplay) percentageDisplay.textContent = `${percent}%`;
-                
-                ipcRenderer.send('main-window-progress', { progress, size });
-                
-                if (progressBar) {
-                    progressBar.value = progress;
-                    progressBar.max = size;
+        try {
+            const stored = localStorage.getItem('userAccessCodes');
+            if (stored) {
+                const accessCodes = JSON.parse(stored);
+                if (accessCodes[username] && Array.isArray(accessCodes[username])) {
+                    codes = [...accessCodes[username]];
                 }
             }
-            
-            if (this.rpc) this.rpc.updateDownloadProgress(progress, size);
-        });
+        } catch (e) {
+            console.warn('Error leyendo códigos de acceso');
+        }
 
-        launch.on('check', (progress, size) => {
-            console.log('✅ Checking files...');
-            if (infoStarting) infoStarting.innerHTML = `Verificando archivos`;
-            
-            const percent = ((progress / size) * 100).toFixed(0);
-            if (percentageDisplay) percentageDisplay.textContent = `${percent}%`;
-            
-            ipcRenderer.send('main-window-progress', { progress, size });
-            
-            if (progressBar) {
-                progressBar.value = progress;
-                progressBar.max = size;
+        return codes;
+    }
+
+    async startGame() {
+        console.log("🎮 Iniciando Minecraft...");
+
+        // Marcar que el juego se está iniciando
+        this.isGameLaunching = true;
+
+        try {
+            let launch = new Launch();
+            let configClient = await this.db.readData('configClient');
+            let instance = await config.getInstanceList();
+            let authenticator = await this.db.readData('accounts', configClient.account_selected);
+
+            if (!authenticator) throw new Error("No hay una cuenta seleccionada válida.");
+
+            let options = instance.find(i => i.name == configClient.instance_selct);
+            if (!options) options = this.currentSelectedInstance;
+            if (!options) throw new Error("No se pudo encontrar la configuración de la instancia seleccionada.");
+
+            const dataDirectory = process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`;
+            const fullPath = `${await appdata()}/${dataDirectory}`;
+
+            const safeConfig = configClient.launcher_config || { closeLauncher: 'close-launcher', download_multi: true, intelEnabledMac: false };
+            const javaConfig = configClient.java_config || {};
+            const safeJavaPath = javaConfig.java_path || 'java';
+            const safeMemory = javaConfig.java_memory || { min: 1024, max: 2048 };
+            const gameConfig = configClient.game_config || {};
+            const safeScreen = gameConfig.screen_size || { width: 854, height: 480 };
+
+            let opt = {
+                url: options.url,
+                authenticator: authenticator,
+                timeout: 10000,
+                path: fullPath,
+                instance: options.name,
+                version: options.loadder.minecraft_version,
+                detached: safeConfig.closeLauncher == "close-all" ? false : true,
+                downloadFileMultiple: safeConfig.download_multi,
+                intelEnabledMac: safeConfig.intelEnabledMac,
+                loader: {
+                    type: options.loadder.loadder_type,
+                    build: options.loadder.loadder_version,
+                    enable: options.loadder.loadder_type == 'none' ? false : true
+                },
+                verify: options.verify,
+                ignored: options.ignored ? [...options.ignored] : [],
+                javaPath: safeJavaPath,
+                screen: { width: safeScreen.width, height: safeScreen.height },
+                memory: { min: `${safeMemory.min * 1024}M`, max: `${safeMemory.max * 1024}M` }
             }
-            
-            if (downloadSpeed) downloadSpeed.textContent = 'Verificando...';
-            if (downloadETA) downloadETA.textContent = '';
-        });
 
-        launch.on('patch', patch => {
-            console.log('🔧 Patching...');
-            ipcRenderer.send('main-window-progress-load');
+            launch.Launch(opt);
 
-            if (infoStarting) infoStarting.innerHTML = `<span class="game-running">Juego en curso</span>`;
-            if (loadingAnimation) loadingAnimation.style.display = "none";
-            if (percentageDisplay) percentageDisplay.textContent = 'Iniciando...';
-            if (downloadSpeed) downloadSpeed.textContent = '';
-            if (downloadETA) downloadETA.textContent = '';
-        });
+            // UI Updates
+            let playInstanceBTN = document.querySelector('.play-instance')
+            let infoStartingBOX = document.querySelector('.info-starting-game')
+            let infoStarting = document.querySelector(".info-starting-game-text")
+            let progressBar = document.querySelector('.progress-bar')
 
-        launch.on('data', (e) => {
-            console.log(`[Minecraft] ${e}`);
+            this.hidePlayButton();
 
-            if (progressBar) progressBar.style.display = "none";
-            if (loadingAnimation) loadingAnimation.style.display = "none";
-            
-            if (configClient.launcher_config.closeLauncher == 'close-launcher') {
-                ipcRenderer.send("main-window-hide");
+            if (infoStartingBOX) infoStartingBOX.style.display = "block";
+            if (progressBar) progressBar.style.display = "block";
+
+            if (!document.querySelector('.download-stats') && infoStartingBOX) {
+                const downloadStats = document.createElement('div')
+                downloadStats.classList.add('download-stats')
+                downloadStats.innerHTML = `<div class="download-speed">0 MB/s</div><div class="download-eta">...</div>`
+                infoStartingBOX.insertBefore(downloadStats, progressBar)
+
+                const percentageDisplay = document.createElement('div')
+                percentageDisplay.classList.add('progress-percentage')
+                percentageDisplay.textContent = '0%'
+
+                const progressContainer = document.createElement('div')
+                progressContainer.classList.add('progress-container')
+                progressContainer.appendChild(progressBar)
+                progressContainer.appendChild(percentageDisplay)
+
+                infoStartingBOX.replaceChild(progressContainer, progressBar)
+
+                const loadingAnimation = document.createElement('div')
+                loadingAnimation.classList.add('loading-animation')
+                loadingAnimation.innerHTML = '<span class="loading-dots"></span>'
+                infoStartingBOX.appendChild(loadingAnimation)
             }
-            
-            new logger('Minecraft', '#36b030');
-            ipcRenderer.send('main-window-progress-load');
-            
-            if (infoStarting) infoStarting.innerHTML = `<span class="game-running">Juego en curso</span>`;
-            if (this.rpc) this.rpc.updateForInstance(options.name);
-        });
 
-        launch.on('close', code => {
-            console.log(`🔴 Minecraft closed with code: ${code}`);
-            this.isGameLaunching = false;
+            const downloadSpeed = document.querySelector('.download-speed')
+            const downloadETA = document.querySelector('.download-eta')
+            const percentageDisplay = document.querySelector('.progress-percentage')
+            const loadingAnimation = document.querySelector('.loading-animation')
 
-            if (configClient.launcher_config.closeLauncher == 'close-launcher') {
-                ipcRenderer.send("main-window-show");
-            }
-            
-            ipcRenderer.send('main-window-progress-reset');
-            
-            if (infoStartingBOX) infoStartingBOX.style.display = "none";
-            
-            this.showPlayButton();
-            
-            if (infoStarting) infoStarting.innerHTML = `Verificación`;
-            
-            new logger(pkg.name, '#7289da');
-            
-            if (this.rpc) this.rpc.setDefault();
-        });
+            ipcRenderer.send('main-window-progress-load')
 
-        launch.on('error', err => {
-            console.error("❌ Launcher error:", err);
-            this.isGameLaunching = false;
-
-            let popupError = new popup();
-            
-            const errorMessage = err.error 
-                || err.message 
-                || (typeof err === 'string' ? err : JSON.stringify(err));
-
-            popupError.openPopup({
-                title: 'Error',
-                content: errorMessage,
-                color: 'red',
-                options: true
+            launch.on('extract', extract => {
+                ipcRenderer.send('main-window-progress-load')
+                if (infoStarting) infoStarting.innerHTML = `Extrayendo archivos`
+                if (percentageDisplay) percentageDisplay.textContent = 'Preparando...'
             });
 
-            if (configClient.launcher_config.closeLauncher == 'close-launcher') {
-                ipcRenderer.send("main-window-show");
+            let lastProgressUpdate = Date.now();
+            let lastBytesLoaded = 0;
+            let averageSpeed = 0;
+            let speedSamples = [];
+
+            const calculateAverageSpeed = (newSpeed) => {
+                speedSamples.push(newSpeed)
+                if (speedSamples.length > 5) speedSamples.shift()
+                return speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length
             }
-            
-            ipcRenderer.send('main-window-progress-reset');
-            
-            if (infoStartingBOX) infoStartingBOX.style.display = "none";
-            
-            this.showPlayButton();
-            
-            if (infoStarting) infoStarting.innerHTML = `Verificación`;
-            
-            new logger(pkg.name, '#7289da');
-        });
 
-        console.log('=== ✅ startGame completed ===');
+            const formatTime = (seconds) => {
+                if (seconds < 60) return `${Math.floor(seconds)}s`
+                if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`
+                return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`
+            }
 
-    } catch (error) {
-        console.error("❌ Fatal exception in startGame:");
-        console.error("Type:", error.constructor.name);
-        console.error("Message:", error.message);
-        console.error("Stack:", error.stack);
-        
-        this.isGameLaunching = false;
-        
-        let popupError = new popup();
-        popupError.openPopup({
-            title: 'Error Fatal',
-            content: `${error.message || 'Error desconocido'}<br><br>Revisa la consola (F12) para más detalles.`,
-            color: 'red',
-            options: true
-        });
-        
-        const infoStartingBOX = document.querySelector('.info-starting-game');
-        if (infoStartingBOX) infoStartingBOX.style.display = "none";
-        
-        this.showPlayButton();
-        
-        throw error;
-    }
-}
+            launch.on('progress', (progress, size) => {
+                if (!isNaN(progress) && isFinite(progress) && !isNaN(size) && isFinite(size) && size > 0) {
+                    const now = Date.now()
+                    const elapsedSinceLastUpdate = (now - lastProgressUpdate) / 1000
+                    if (elapsedSinceLastUpdate > 0.5) {
+                        const bytesLoaded = progress - lastBytesLoaded
+                        const instantSpeed = bytesLoaded / elapsedSinceLastUpdate
+                        if (instantSpeed > 0) {
+                            averageSpeed = calculateAverageSpeed(instantSpeed)
+                            const speedMBps = (averageSpeed / 1048576).toFixed(2)
+                            if (downloadSpeed) downloadSpeed.textContent = `${speedMBps} MB/s`
+                            const remaining = size - progress
+                            const eta = remaining / averageSpeed
+                            if (eta > 0 && eta < 100000 && downloadETA) {
+                                downloadETA.textContent = `Tiempo restante: ${formatTime(eta)}`
+                            }
+                        }
+                        lastProgressUpdate = now
+                        lastBytesLoaded = progress
+                    }
+                    const percent = ((progress / size) * 100).toFixed(0)
+                    if (infoStarting) infoStarting.innerHTML = `Descargando archivos`
+                    if (percentageDisplay) percentageDisplay.textContent = `${percent}%`
+                    ipcRenderer.send('main-window-progress', { progress, size })
+                    if (progressBar) {
+                        progressBar.value = progress
+                        progressBar.max = size
+                    }
+                }
+                this.rpc.updateDownloadProgress(progress, size)
+            });
 
-    getdate(e) {
-        let date = new Date(e)
-        let year = date.getFullYear()
-        let month = date.getMonth() + 1
-        let day = date.getDate()
-        let allMonth = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-        return { year: year, month: allMonth[month - 1], day: day }
+            launch.on('check', (progress, size) => {
+                if (infoStarting) infoStarting.innerHTML = `Verificando archivos`
+                const percent = ((progress / size) * 100).toFixed(0)
+                if (percentageDisplay) percentageDisplay.textContent = `${percent}%`
+                ipcRenderer.send('main-window-progress', { progress, size })
+                if (progressBar) {
+                    progressBar.value = progress
+                    progressBar.max = size
+                }
+                if (downloadSpeed) downloadSpeed.textContent = 'Verificando...'
+                if (downloadETA) downloadETA.textContent = ''
+            });
+
+            launch.on('patch', patch => {
+                ipcRenderer.send('main-window-progress-load')
+                if (infoStarting) infoStarting.innerHTML = `<span class="game-running">Juego en curso</span>`
+                if (loadingAnimation) loadingAnimation.style.display = "none"
+                if (percentageDisplay) percentageDisplay.textContent = 'Iniciando...'
+                if (downloadSpeed) downloadSpeed.textContent = ''
+                if (downloadETA) downloadETA.textContent = ''
+            });
+
+            // 🔧 CORRECCIÃ"N PRINCIPAL: Logs de Minecraft y gestiÃ³n de proceso
+            launch.on('data', (e) => {
+                console.log(`[Minecraft] ${e}`); // ✅ LOGS DE MINECRAFT VISIBLES
+
+                if (progressBar) progressBar.style.display = "none"
+                if (loadingAnimation) loadingAnimation.style.display = "none"
+                if (safeConfig.closeLauncher == 'close-launcher') ipcRenderer.send("main-window-hide");
+                new logger('Minecraft', '#36b030')
+                ipcRenderer.send('main-window-progress-load')
+                if (infoStarting) infoStarting.innerHTML = `<span class="game-running">Juego en curso</span>`
+                this.rpc.updateForInstance(options.name)
+            })
+
+            // 🔧 CORRECCIÓN: No cerrar prematuramente
+            launch.on('close', code => {
+                console.log(`🛑 Minecraft cerrado con código: ${code}`);
+
+                // Resetear flag de lanzamiento
+                this.isGameLaunching = false;
+
+                if (safeConfig.closeLauncher == 'close-launcher') ipcRenderer.send("main-window-show");
+                ipcRenderer.send('main-window-progress-reset')
+                if (infoStartingBOX) infoStartingBOX.style.display = "none"
+                this.showPlayButton();
+                if (infoStarting) infoStarting.innerHTML = `Verificación`
+                new logger(pkg.name, '#7289da')
+                this.rpc.setDefault()
+            });
+
+            launch.on('error', err => {
+                console.error("❌ Error del launcher:", err);
+
+                // Resetear flag de lanzamiento
+                this.isGameLaunching = false;
+
+                let popupError = new popup()
+                popupError.openPopup({
+                    title: 'Error',
+                    content: err.error || JSON.stringify(err),
+                    color: 'red',
+                    options: true
+                })
+                if (safeConfig.closeLauncher == 'close-launcher') ipcRenderer.send("main-window-show");
+                ipcRenderer.send('main-window-progress-reset')
+                if (infoStartingBOX) infoStartingBOX.style.display = "none"
+                this.showPlayButton();
+                if (infoStarting) infoStarting.innerHTML = `Verificación`
+                new logger(pkg.name, '#7289da')
+            });
+
+        } catch (error) {
+            console.error("❌ Excepción fatal en startGame:", error);
+            throw error;
+        }
     }
 }
 export default Home;

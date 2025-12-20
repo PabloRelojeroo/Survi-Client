@@ -1,6 +1,6 @@
 /**
- * @author Luuxis
- * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
+ * @author Pablo
+ * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
 const { ipcRenderer, shell } = require('electron');
@@ -30,9 +30,9 @@ class Splash {
 
     async startAnimation() {
         let splashes = [
-            { "message": "Yo... vivo...", "author": "Luuxis" },
-            { "message": "Hola, soy código.", "author": "Luuxis" },
-            { "message": "Linux no es un SO, es un kernel.", "author": "Luuxis" }
+            { "message": "Bienvenido", "author": "Pablo" },
+            { "message": "Bienvenido", "author": "Pablo" },
+            { "message": "Bienvenido.", "author": "Pablo" }
         ];
         let splash = splashes[Math.floor(Math.random() * splashes.length)];
         this.splashMessage.textContent = splash.message;
@@ -54,11 +54,11 @@ class Splash {
         this.setStatus(`Buscando actualizaciones...`);
 
         ipcRenderer.invoke('update-app').then().catch(err => {
-            return this.shutdown(`Error al buscar actualizaciones:<br>${err.message}`);
+            return this.shutdown(`Error buscando actualizaciones :<br>${err.message}`);
         });
 
         ipcRenderer.on('updateAvailable', () => {
-            this.setStatus(`¡Actualización disponible!`);
+            this.setStatus(`Actualizacion disponible !`);
             if (os.platform() == 'win32') {
                 this.toggleProgress();
                 ipcRenderer.send('start-update');
@@ -76,7 +76,7 @@ class Splash {
         })
 
         ipcRenderer.on('update-not-available', () => {
-            console.error("Actualización no disponible");
+            console.error("Actualizacion no disponible");
             this.maintenanceCheck();
         })
     }
@@ -102,13 +102,13 @@ class Splash {
         let latest;
 
         if (os.platform() == 'darwin') latest = this.getLatestReleaseForOS('mac', '.dmg', latestRelease);
-        else if (os == 'linux') latest = this.getLatestReleaseForOS('linux', '.appimage', latestRelease);
+        else if (os.platform() == 'linux') latest = this.getLatestReleaseForOS('linux', '.appimage', latestRelease);
 
 
-        this.setStatus(`¡Actualización disponible!<br><div class="download-update">Descargar</div>`);
+        this.setStatus(`Nueva version disponible<br><div class="download-update">Descargar</div>`);
         document.querySelector(".download-update").addEventListener("click", () => {
             shell.openExternal(latest.browser_download_url);
-            return this.shutdown("Descargando...");
+            return this.shutdown("Descarga en curso...");
         });
     }
 
@@ -119,21 +119,30 @@ class Splash {
             this.startLauncher();
         }).catch(e => {
             console.error(e);
-            this.startLauncher();
-            //return this.shutdown("No se detectó conexión a internet,<br>por favor intenta de nuevo más tarde.");
+            return this.shutdown("No se detectó conexión a Internet,<br>Intentelo de nuevo mas tarde.");
         })
     }
 
-    startLauncher() {
-        this.setStatus(`Iniciando lanzador`);
-        ipcRenderer.send('splash-check-finished');
+    async startLauncher() {
+        this.setStatus(`Iniciando cliente`);
+
+        // Fade out del contenido del splash
+        const expansionContainer = document.querySelector('.expansion-container');
+        expansionContainer.style.transition = 'opacity 0.5s ease';
+        expansionContainer.style.opacity = '0';
+
+        // Esperar a que termine el fade out
+        await sleep(500);
+
+        // Trigger window expansion y carga del launcher
+        ipcRenderer.send('expand-and-load-main');
     }
 
     shutdown(text) {
-        this.setStatus(`${text}<br>Apagando en 5s`);
+        this.setStatus(`${text}<br>Cerrando en 5s`);
         let i = 4;
         setInterval(() => {
-            this.setStatus(`${text}<br>Apagando en ${i--}s`);
+            this.setStatus(`${text}<br>Cerrando en ${i--}s`);
             if (i < 0) ipcRenderer.send('update-window-close');
         }, 1000);
     }
@@ -141,6 +150,7 @@ class Splash {
     setStatus(text) {
         this.message.innerHTML = text;
     }
+
     toggleProgress() {
         if (this.progress.classList.toggle("show")) this.setProgress(0, 1);
     }
@@ -150,21 +160,6 @@ class Splash {
         this.progress.max = max;
     }
 }
-
-ipcRenderer.on('splash-fade-out', async () => {
-    try {
-        const splashContainer = document.querySelector('#splash');
-        if (splashContainer) {
-            splashContainer.classList.add('pre-blur');
-            await sleep(250);
-        }
-    } catch (e) {}
-
-    try {
-        document.documentElement.style.transition = "opacity 1s ease";
-        document.documentElement.style.opacity = "0";
-    } catch (e) {}
-});
 
 function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));

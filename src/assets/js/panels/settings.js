@@ -1,6 +1,6 @@
 /**
- * @author Luuxis
- * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
+ * @author Pablo
+ * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
 import { changePanel, accountSelect, database, Slider, config, setStatus, popup, appdata, setBackground } from '../utils.js'
@@ -34,12 +34,6 @@ class Settings {
 
                     if (activeContainerSettings) activeContainerSettings.classList.toggle('active-container-settings');
                     document.querySelector(`#account-tab`).classList.add('active-container-settings');
-
-                    const playElements = document.querySelector('.play-elements');
-                    if (playElements) {
-                        playElements.classList.remove('hidden');
-                        playElements.style.display = 'flex';
-                    }
                     return changePanel('home')
                 }
 
@@ -59,15 +53,14 @@ class Settings {
                 let id = e.target.id
                 if (e.target.classList.contains('account')) {
                     popupAccount.openPopup({
-                        title: 'Connexion',
-                        content: 'Veuillez patienter...',
+                        title: 'Conectando',
+                        content: 'Espere por favor...',
                         color: 'var(--color)'
                     })
 
                     if (id == 'add') {
                         document.querySelector('.cancel-home').style.display = 'inline'
-                        changePanel('login');
-                        return;
+                        return changePanel('login')
                     }
 
                     let account = await this.db.readData('accounts', id);
@@ -79,8 +72,8 @@ class Settings {
 
                 if (e.target.classList.contains("delete-profile")) {
                     popupAccount.openPopup({
-                        title: 'Connexion',
-                        content: 'Veuillez patienter...',
+                        title: 'Conectando',
+                        content: 'Espere por favor...',
                         color: 'var(--color)'
                     })
                     await this.db.deleteData('accounts', id);
@@ -97,7 +90,7 @@ class Settings {
                         configClient.account_selected = allAccounts[0].ID
                         accountSelect(allAccounts[0]);
                         let newInstanceSelect = await this.setInstance(allAccounts[0]);
-                        configClient.instance_select = newInstanceSelect.instance_select
+                        configClient.instance_selct = newInstanceSelect.instance_selct
                         return await this.db.updateData('configClient', configClient);
                     }
                 }
@@ -111,7 +104,7 @@ class Settings {
 
     async setInstance(auth) {
         let configClient = await this.db.readData('configClient')
-        let instanceSelect = configClient.instance_select
+        let instanceSelect = configClient.instance_selct
         let instancesList = await config.getInstanceList()
 
         for (let instance of instancesList) {
@@ -120,7 +113,7 @@ class Settings {
                 if (whitelist !== auth.name) {
                     if (instance.name == instanceSelect) {
                         let newInstanceSelect = instancesList.find(i => i.whitelistActive == false)
-                        configClient.instance_select = newInstanceSelect.name
+                        configClient.instance_selct = newInstanceSelect.name
                         await setStatus(newInstanceSelect.status)
                     }
                 }
@@ -173,7 +166,7 @@ class Settings {
         javaPathText.textContent = `${await appdata()}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}/runtime`;
 
         let configClient = await this.db.readData('configClient')
-        let javaPath = configClient?.java_config?.java_path || 'Usar la versión de Java incluida con el launcher';
+        let javaPath = configClient?.java_config?.java_path || 'Utiliser la version de java livre avec le launcher';
         let javaPathInputTxt = document.querySelector(".java-path-input-text");
         let javaPathInputFile = document.querySelector(".java-path-input-file");
         javaPathInputTxt.value = javaPath;
@@ -199,7 +192,7 @@ class Settings {
 
         document.querySelector(".java-path-reset").addEventListener("click", async () => {
             let configClient = await this.db.readData('configClient')
-            javaPathInputTxt.value = 'Usar la versión de Java incluida con el launcher';
+            javaPathInputTxt.value = 'Utilice la versión de Java entregada con el cliente';
             configClient.java_config.java_path = null
             await this.db.updateData('configClient', configClient);
         });

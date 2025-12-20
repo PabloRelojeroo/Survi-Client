@@ -1,25 +1,47 @@
 /**
  * @author Pablo
- * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
+ * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
+// import panel
 import Login from './panels/login.js';
 import Home from './panels/home.js';
 import Settings from './panels/settings.js';
 
+// import modules
 import { logger, config, changePanel, database, popup, setBackground, accountSelect, addAccount, pkg } from './utils.js';
 const { AZauth, Microsoft, Mojang } = require('minecraft-java-core');
 
+// libs
 const { ipcRenderer } = require('electron');
 const fs = require('fs');
-const os = require('os');
 
 class Launcher {
     async init() {
         this.initLog();
-        console.log('Initializing Launcher...');
+        console.log('Iniciando launcher...');
+
+        // STARTUP CHECK
+        try {
+            const userDataPath = await ipcRenderer.invoke('path-user-data');
+            const os = require('os');
+            const path = require('path');
+            const dbDir = process.env.NODE_ENV === 'dev'
+                ? path.resolve(userDataPath, '../../').replace(/\\/g, '/')
+                : (process.platform === 'linux' ? path.join(os.homedir(), '.config', 'selkieclient', 'databases') : path.join(userDataPath, 'databases'));
+
+            if (fs.existsSync(dbDir)) {
+                const files = fs.readdirSync(dbDir);
+                alert(`STARTUP CHECK:\nLooking in: ${dbDir}\nFound files: ${JSON.stringify(files)}`);
+            } else {
+                alert(`STARTUP CHECK:\nLooking in: ${dbDir}\nFolder does NOT exist!`);
+            }
+        } catch (e) {
+            alert(`STARTUP CHECK ERROR: ${e.message}`);
+        }
+
         this.shortcut()
         await setBackground()
-        this.initFrame();
+        if (process.platform == 'win32') this.initFrame();
         this.config = await config.GetConfig().then(res => res).catch(err => err);
         if (await this.config.error) return this.errorConnect()
         this.db = new database();
@@ -58,17 +80,16 @@ class Launcher {
     }
 
     initFrame() {
-        console.log('Initializing Frame...')
-        const platform = os.platform() === 'darwin' ? "darwin" : "other";
+        console.log('Iniciando Frame...')
+        document.querySelector('.frame').classList.toggle('hide')
+        document.querySelector('.dragbar').classList.toggle('hide')
 
-        document.querySelector(`.${platform} .frame`).classList.toggle('hide')
-
-        document.querySelector(`.${platform} .frame #minimize`).addEventListener('click', () => {
+        document.querySelector('#minimize').addEventListener('click', () => {
             ipcRenderer.send('main-window-minimize');
         });
 
         let maximized = false;
-        let maximize = document.querySelector(`.${platform} .frame #maximize`);
+        let maximize = document.querySelector('#maximize')
         maximize.addEventListener('click', () => {
             if (maximized) ipcRenderer.send('main-window-maximize')
             else ipcRenderer.send('main-window-maximize');
@@ -77,19 +98,19 @@ class Launcher {
             maximize.classList.toggle('icon-restore-down')
         });
 
-        document.querySelector(`.${platform} .frame #close`).addEventListener('click', () => {
+        document.querySelector('#close').addEventListener('click', () => {
             ipcRenderer.send('main-window-close');
         })
     }
 
     async initConfigClient() {
-        console.log('Initializing Config Client...')
+        console.log('Iniciando la configuracion del cliente...')
         let configClient = await this.db.readData('configClient')
 
         if (!configClient) {
             await this.db.createData('configClient', {
                 account_selected: null,
-                instance_select: null,
+                instance_selct: null,
                 java_config: {
                     java_path: null,
                     java_memory: {
@@ -135,13 +156,13 @@ class Launcher {
             for (let account of accounts) {
                 let account_ID = account.ID
                 if (account.error) {
-                    await this.db.deleteData('accounts', account_ID)
+                    // await this.db.deleteData('accounts', account_ID)
                     continue
                 }
                 if (account.meta.type === 'Xbox') {
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
-                        title: 'Connexion',
+                        title: 'Conectando',
                         content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
                         color: 'var(--color)',
                         background: false
@@ -150,11 +171,14 @@ class Launcher {
                     let refresh_accounts = await new Microsoft(this.config.client_id).refresh(account);
 
                     if (refresh_accounts.error) {
-                        await this.db.deleteData('accounts', account_ID)
+                        alert(`Session Refresh Failed for ${account.name}.\nReason: ${refresh_accounts.errorMessage || JSON.stringify(refresh_accounts)}\n\nYour session was NOT deleted. Please check your internet connection.`);
+                        // await this.db.deleteData('accounts', account_ID)
+                        /*
                         if (account_ID == account_selected) {
                             configClient.account_selected = null
                             await this.db.updateData('configClient', configClient)
                         }
+                        */
                         console.error(`[Account] ${account.name}: ${refresh_accounts.errorMessage}`);
                         continue;
                     }
@@ -166,7 +190,7 @@ class Launcher {
                 } else if (account.meta.type == 'AZauth') {
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
-                        title: 'Connexion',
+                        title: 'Conecion',
                         content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
                         color: 'var(--color)',
                         background: false
@@ -174,7 +198,7 @@ class Launcher {
                     let refresh_accounts = await new AZauth(this.config.online).verify(account);
 
                     if (refresh_accounts.error) {
-                        this.db.deleteData('accounts', account_ID)
+                        // this.db.deleteData('accounts', account_ID)
                         if (account_ID == account_selected) {
                             configClient.account_selected = null
                             this.db.updateData('configClient', configClient)
@@ -190,7 +214,7 @@ class Launcher {
                 } else if (account.meta.type == 'Mojang') {
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
-                        title: 'Connexion',
+                        title: 'Conexion',
                         content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
                         color: 'var(--color)',
                         background: false
@@ -208,7 +232,7 @@ class Launcher {
                     let refresh_accounts = await Mojang.refresh(account);
 
                     if (refresh_accounts.error) {
-                        this.db.deleteData('accounts', account_ID)
+                        // this.db.deleteData('accounts', account_ID)
                         if (account_ID == account_selected) {
                             configClient.account_selected = null
                             this.db.updateData('configClient', configClient)
@@ -223,11 +247,13 @@ class Launcher {
                     if (account_ID == account_selected) accountSelect(refresh_accounts)
                 } else {
                     console.error(`[Account] ${account.name}: Account Type Not Found`);
-                    this.db.deleteData('accounts', account_ID)
+                    // this.db.deleteData('accounts', account_ID)
+                    /*
                     if (account_ID == account_selected) {
                         configClient.account_selected = null
                         this.db.updateData('configClient', configClient)
                     }
+                    */
                 }
             }
 

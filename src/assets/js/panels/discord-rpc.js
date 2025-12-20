@@ -16,11 +16,12 @@ class DiscordRPC {
             this.isConnected = true;
             this.startTimestamp = Date.now();
             await this.setDefault();
-            console.log('Discord RPC conectado');
+            console.log('✅ Discord RPC conectado');
         } catch (error) {
             this.isConnected = false;
+            // No mostrar error si Discord no está corriendo (comportamiento esperado)
             if (error.message && !error.message.includes('ENOENT') && !error.message.includes('Could not connect')) {
-                console.warn('Discord RPC no disponible:', error.message);
+                console.warn('⚠️ Discord RPC no disponible:', error.message);
             }
         }
     }
@@ -108,3 +109,4 @@ class DiscordRPC {
 }
 
 export default DiscordRPC;
+

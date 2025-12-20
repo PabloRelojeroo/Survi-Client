@@ -17,11 +17,11 @@ class InstanceAssetsHandler {
 
     buildAssetUrl(instanceName, assetPath) {
         if (!assetPath) return null;
-
+        
         if (assetPath.startsWith('http://') || assetPath.startsWith('https://')) {
             return assetPath;
         }
-
+        
         if (assetPath.startsWith('assets/')) {
             return assetPath;
         }
@@ -31,13 +31,13 @@ class InstanceAssetsHandler {
 
     getInstanceAssets(instance) {
         const customization = instance.customization || {};
-
-        const backgroundUrl = customization.background && typeof customization.background === 'string' ?
-            this.buildAssetUrl(instance.name, customization.background) :
+        
+        const backgroundUrl = customization.background && typeof customization.background === 'string' ? 
+            this.buildAssetUrl(instance.name, customization.background) : 
             this.defaultAssets.background;
 
-        const logoUrl = customization.logo ?
-            this.buildAssetUrl(instance.name, customization.logo) :
+        const logoUrl = customization.logo ? 
+            this.buildAssetUrl(instance.name, customization.logo) : 
             this.defaultAssets.logo;
 
         return {
@@ -57,16 +57,17 @@ class InstanceAssetsHandler {
     showWelcomePanel() {
         this.setWelcomeBackground();
     }
-
+    
     hideWelcomePanel() {
         document.body.classList.remove('welcome-active');
     }
-
+    
     setWelcomeBackground() {
         const backgroundUrl = this.defaultAssets.welcomeBackground;
-
+        
         const img = new Image();
         img.onload = () => {
+            // Aplicar con transición suave
             document.body.style.opacity = '0.8';
             setTimeout(() => {
                 document.body.style.setProperty('background-image', `url('${backgroundUrl}')`, 'important');
@@ -79,16 +80,17 @@ class InstanceAssetsHandler {
                 document.body.style.opacity = '1';
             }, 200);
         };
-
+        
         img.onerror = () => {
             document.body.style.setProperty('background-image', `url('${this.defaultAssets.background}')`, 'important');
         };
-
+        
         img.src = backgroundUrl;
     }
 
     async createLogoElement(instance, onClick, username) {
-
+        console.log(`🏗️ Creando elemento de logo para: ${instance.name}`);
+        
         const container = document.createElement('div');
         container.classList.add('instance-logo-container');
         container.id = `logo-${instance.name}`;
@@ -105,22 +107,25 @@ class InstanceAssetsHandler {
         }
 
         img.onerror = () => {
-            console.warn(`Error al cargar el logo para ${instance.name}, usando logo por defecto`);
+            console.warn(`⚠️ Error al cargar el logo para ${instance.name}, usando logo por defecto`);
             img.src = this.defaultAssets.logo;
         };
 
         img.onload = () => {
+            console.log(`✅ Logo cargado exitosamente para ${instance.name}`);
         };
 
         img.src = logo;
         container.appendChild(img);
-
-
+        
+        console.log(`✅ Contenedor creado con ID: ${container.id}`);
+        
         if (onClick) {
             container.addEventListener('click', async () => {
-
+                console.log(`🖱️ Click detectado en logo: ${instance.name}`);
+                
                 if (container.classList.contains('active-instance')) {
-                    console.log('Esta instancia ya está activa');
+                    console.log('⚠️ Esta instancia ya está activa');
                     return;
                 }
 
@@ -129,13 +134,13 @@ class InstanceAssetsHandler {
                     previousActive.classList.remove('active-instance');
                 }
                 container.classList.add('active-instance');
-
+                
                 try {
                     this.hideWelcomePanel();
                     await this.updateInstanceBackground(instance);
                     onClick(instance);
                 } catch (error) {
-                    console.error('Error al actualizar el fondo:', error);
+                    console.error('❌ Error al actualizar el fondo:', error);
                 }
             });
         }
@@ -144,17 +149,20 @@ class InstanceAssetsHandler {
     }
 
     async updateInstanceBackground(instance) {
-
+        console.log('Actualizando fondo para instancia:', instance.name);
+        
         return new Promise((resolve, reject) => {
             const { background } = this.getInstanceAssets(instance);
+            console.log('URL del fondo:', background);
 
             const img = new Image();
-
+            
             img.onload = () => {
                 console.log('Imagen de fondo cargada exitosamente');
-
+                
+                // Transición suave con opacity
                 document.body.style.opacity = '0.7';
-
+                
                 setTimeout(() => {
                     document.body.style.setProperty('background-image', `url('${background}')`, 'important');
                     document.body.style.setProperty('background-size', 'cover', 'important');
@@ -164,11 +172,12 @@ class InstanceAssetsHandler {
                     document.body.style.setProperty('background-color', 'transparent', 'important');
                     document.body.style.setProperty('transition', 'all 0.5s ease', 'important');
                     
+                    // Fade in suave
                     setTimeout(() => {
                         document.body.style.opacity = '1';
                     }, 50);
                 }, 300);
-
+                
                 resolve();
             };
 

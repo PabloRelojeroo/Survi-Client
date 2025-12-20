@@ -1,12 +1,11 @@
 /**
  * @author Pablo
- * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
+ * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
 const { ipcRenderer } = require('electron')
 const { Status } = require('minecraft-java-core')
 const fs = require('fs');
-const path = require('path');
 const pkg = require('../package.json');
 
 import config from './utils/config.js';
@@ -23,30 +22,19 @@ async function setBackground(theme) {
         theme = configClient?.launcher_config?.theme || "auto"
         theme = await ipcRenderer.invoke('is-dark-theme', theme).then(res => res)
     }
-    let background;
+    let background
     let body = document.body;
     body.className = theme ? 'dark global' : 'light global';
-    try {
-        // Try to use filesystem images if available (dev environment)
-        const baseDir = (typeof __dirname !== 'undefined') ? __dirname : path.dirname(new URL(import.meta.url).pathname);
-        const easterPath = path.join(baseDir, 'assets', 'images', 'background', 'easterEgg');
-        const normalPath = path.join(baseDir, 'assets', 'images', 'background', theme ? 'dark' : 'light');
-        if (fs && fs.existsSync && fs.existsSync(easterPath) && Math.random() < 0.005) {
-            let backgrounds = fs.readdirSync(easterPath);
-            let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-            background = `url(./assets/images/background/easterEgg/${Background})`;
-        } else if (fs && fs.existsSync && fs.existsSync(normalPath)) {
-            let backgrounds = fs.readdirSync(normalPath);
-            let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-            background = `linear-gradient(#00000080, #00000080), url(./assets/images/background/${theme ? 'dark' : 'light'}/${Background})`;
-        }
-    } catch (e) {
-        // If filesystem access fails (module context, packaged app), fallback gracefully
-        console.warn('setBackground: filesystem access failed, using CSS fallback', e);
-        background = null;
+    if (fs.existsSync(`${__dirname}/assets/images/background/easterEgg`) && Math.random() < 0.005) {
+        let backgrounds = fs.readdirSync(`${__dirname}/assets/images/background/easterEgg`);
+        let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+        background = `url(./assets/images/background/easterEgg/${Background})`;
+    } else if (fs.existsSync(`${__dirname}/assets/images/background/${theme ? 'dark' : 'light'}`)) {
+        let backgrounds = fs.readdirSync(`${__dirname}/assets/images/background/${theme ? 'dark' : 'light'}`);
+        let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+        background = `linear-gradient(#00000080, #00000080), url(./assets/images/background/${theme ? 'dark' : 'light'}/${Background})`;
     }
-    body.style.backgroundImage = background ? background : '';
-    body.style.backgroundColor = background ? '' : (theme ? '#000' : '#fff');
+    body.style.backgroundImage = background ? background : theme ? '#000' : '#fff';
     body.style.backgroundSize = 'cover';
 }
 
@@ -91,7 +79,8 @@ async function accountSelect(data) {
 
 async function headplayer(skinBase64) {
     let skin = await new skin2D().creatHeadTexture(skinBase64);
-    document.querySelector(".player-head").style.backgroundImage = `url(${skin})`;
+    let head = document.querySelector(".player-head");
+    if (head) head.style.backgroundImage = `url(${skin})`;
 }
 
 async function setStatus(opt) {
