@@ -1,6 +1,6 @@
 /**
  * @author Pablo
- * Luuxis License v1.0 (voir fichier LICENSE pour les détails en FR/EN)
+ * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
 const { ipcRenderer } = require('electron')
@@ -40,7 +40,7 @@ async function setBackground(theme) {
 
 async function changePanel(id) {
     let panel = document.querySelector(`.${id}`);
-    let active = document.querySelector(`.panel.active`)
+    let active = document.querySelector(`.active`)
     if (active) active.classList.toggle("active");
     panel.classList.add("active");
 }
@@ -49,99 +49,23 @@ async function appdata() {
     return await ipcRenderer.invoke('appData').then(path => path)
 }
 
-/**
- * INSTRUCCIONES: En utils.js, REEMPLAZAR la función addAccount con esta versión
- */
-
 async function addAccount(data) {
-    try {
-        console.log('🔧 Adding account to UI:', data?.name || 'Unknown');
-        
-        // Validar que data existe
-        if (!data || !data.ID) {
-            console.error('❌ addAccount: Invalid data', data);
-            return null;
-        }
-        
-        // Buscar si ya existe
-        const existingAccount = document.getElementById(data.ID);
-        if (existingAccount) {
-            console.log('✅ Account already exists in UI, updating');
-            // Actualizar el contenido si es necesario
-            return existingAccount;
-        }
-        
-        // Crear skin
-        let skin = false;
-        if (data?.profile?.skins?.[0]?.base64) {
-            try {
-                skin = await new skin2D().creatHeadTexture(data.profile.skins[0].base64);
-            } catch (e) {
-                console.warn('⚠️ Could not create skin texture:', e);
-            }
-        }
-        
-        // Crear elemento div
-        let div = document.createElement("div");
-        div.classList.add("account");
-        div.id = data.ID;
-        
-        // Extraer nombre con múltiples fallbacks
-        const displayName = data?.name
-            || data?.username
-            || data?.displayName
-            || data?.display_name
-            || data?.profile?.name
-            || data?.profile?.displayName
-            || data?.meta?.name
-            || data?.selectedProfile?.name
-            || data?.availableProfiles?.[0]?.name
-            || data?.xboxGamertag
-            || 'Unknown';
-        
-        // Extraer UUID con múltiples fallbacks
-        const uuid = data?.uuid 
-            || data?.id 
-            || data?.profile?.id 
-            || data?.profile?.uuid 
-            || data?.selectedProfile?.id 
-            || data?.meta?.uuid
-            || '';
-
-        if (displayName === 'Unknown') {
-            console.error('❌ addAccount: Could not determine display name');
-            console.error('Available keys:', Object.keys(data || {}));
-        }
-
-        // Construir HTML
-        div.innerHTML = `
-            <div class="profile-image" ${skin ? `style="background-image: url(${skin});"` : ''}></div>
-            <div class="profile-infos">
-                <div class="profile-pseudo">${displayName}</div>
-                <div class="profile-uuid">${uuid}</div>
-            </div>
-            <div class="delete-profile" id="${data.ID}">
-                <div class="icon-account-delete delete-profile-icon"></div>
-            </div>
-        `;
-        
-        // Verificar que el contenedor existe
-        const accountsList = document.querySelector('.accounts-list');
-        if (!accountsList) {
-            console.error('❌ .accounts-list container not found in DOM');
-            return null;
-        }
-        
-        // Agregar al DOM
-        const addedElement = accountsList.appendChild(div);
-        console.log('✅ Account added to UI successfully');
-        return addedElement;
-        
-    } catch (error) {
-        console.error('❌ Error in addAccount:', error);
-        console.error('Stack:', error.stack);
-        return null;
-    }
+    let skin = false
+    if (data?.profile?.skins[0]?.base64) skin = await new skin2D().creatHeadTexture(data.profile.skins[0].base64);
+    let div = document.createElement("div");
+    div.classList.add("account");
+    div.id = data.ID;
+    div.innerHTML = `
+        <div class="profile-image" ${skin ? 'style="background-image: url(' + skin + ');"' : ''}></div>
+        <div class="profile-infos">
+            <div class="profile-pseudo">${data.name}</div>
+            <div class="profile-uuid">${data.uuid}</div>
+        </div>
+        <div class="delete-profile" id="${data.ID}">
+            <div class="icon-account-delete delete-profile-icon"></div>
+        </div>
+    `
+    return document.querySelector('.accounts-list').appendChild(div);
 }
 
 async function accountSelect(data) {
@@ -155,7 +79,8 @@ async function accountSelect(data) {
 
 async function headplayer(skinBase64) {
     let skin = await new skin2D().creatHeadTexture(skinBase64);
-    document.querySelector(".player-head").style.backgroundImage = `url(${skin})`;
+    let head = document.querySelector(".player-head");
+    if (head) head.style.backgroundImage = `url(${skin})`;
 }
 
 async function setStatus(opt) {
@@ -165,7 +90,7 @@ async function setStatus(opt) {
 
     if (!opt) {
         statusServerElement.classList.add('red')
-        statusServerElement.innerHTML = `Cerrado - 0 ms`
+        statusServerElement.innerHTML = `Ferme - 0 ms`
         document.querySelector('.status-player-count').classList.add('red')
         playersOnline.innerHTML = '0'
         return
@@ -179,11 +104,11 @@ async function setStatus(opt) {
     if (!statusServer.error) {
         statusServerElement.classList.remove('red')
         document.querySelector('.status-player-count').classList.remove('red')
-        statusServerElement.innerHTML = `En línea - ${statusServer.ms} ms`
+        statusServerElement.innerHTML = `En ligne - ${statusServer.ms} ms`
         playersOnline.innerHTML = statusServer.playersConnect
     } else {
         statusServerElement.classList.add('red')
-        statusServerElement.innerHTML = `Cerrado - 0 ms`
+        statusServerElement.innerHTML = `Ferme - 0 ms`
         document.querySelector('.status-player-count').classList.add('red')
         playersOnline.innerHTML = '0'
     }
