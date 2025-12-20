@@ -40,6 +40,10 @@ async function setBackground(theme) {
 
 async function changePanel(id) {
     let panel = document.querySelector(`.${id}`);
+    if (!panel) {
+        console.warn(`changePanel: panel .${id} not found`);
+        return;
+    }
     let active = document.querySelector(`.active`)
     if (active) active.classList.toggle("active");
     panel.classList.add("active");
@@ -58,22 +62,30 @@ async function addAccount(data) {
     div.innerHTML = `
         <div class="profile-image" ${skin ? 'style="background-image: url(' + skin + ');"' : ''}></div>
         <div class="profile-infos">
-            <div class="profile-pseudo">${data.name}</div>
-            <div class="profile-uuid">${data.uuid}</div>
+            <div class="profile-pseudo">${data.name ?? 'Unknown'}</div>
+            <div class="profile-uuid">${data.uuid ?? ''}</div>
         </div>
         <div class="delete-profile" id="${data.ID}">
             <div class="icon-account-delete delete-profile-icon"></div>
         </div>
-    `
-    return document.querySelector('.accounts-list').appendChild(div);
+    `;
+
+    const container = document.querySelector('.accounts-list');
+    if (!container) {
+        // If the accounts list DOM container isn't present (panel not rendered yet), skip DOM insertion
+        console.warn('addAccount: .accounts-list container not found, skipping DOM append');
+        return null;
+    }
+    return container.appendChild(div);
 }
 
 async function accountSelect(data) {
-    let account = document.getElementById(`${data.ID}`);
-    let activeAccount = document.querySelector('.account-select')
+    if (!data) return;
+    const account = document.getElementById(`${data.ID}`);
+    const activeAccount = document.querySelector('.account-select')
 
     if (activeAccount) activeAccount.classList.toggle('account-select');
-    account.classList.add('account-select');
+    if (account) account.classList.add('account-select');
     if (data?.profile?.skins[0]?.base64) headplayer(data.profile.skins[0].base64);
 }
 

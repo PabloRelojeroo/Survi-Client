@@ -20,24 +20,7 @@ class Launcher {
         this.initLog();
         console.log('Iniciando launcher...');
 
-        // STARTUP CHECK
-        try {
-            const userDataPath = await ipcRenderer.invoke('path-user-data');
-            const os = require('os');
-            const path = require('path');
-            const dbDir = process.env.NODE_ENV === 'dev'
-                ? path.resolve(userDataPath, '../../').replace(/\\/g, '/')
-                : (process.platform === 'linux' ? path.join(os.homedir(), '.config', 'selkieclient', 'databases') : path.join(userDataPath, 'databases'));
-
-            if (fs.existsSync(dbDir)) {
-                const files = fs.readdirSync(dbDir);
-                alert(`STARTUP CHECK:\nLooking in: ${dbDir}\nFound files: ${JSON.stringify(files)}`);
-            } else {
-                alert(`STARTUP CHECK:\nLooking in: ${dbDir}\nFolder does NOT exist!`);
-            }
-        } catch (e) {
-            alert(`STARTUP CHECK ERROR: ${e.message}`);
-        }
+        // Database startup check removed (debugging logs removed as requested)
 
         this.shortcut()
         await setBackground()

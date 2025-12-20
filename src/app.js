@@ -38,10 +38,7 @@ if (!fs.existsSync(userDataPath)) {
 // Configurar path
 app.setPath('userData', userDataPath);
 
-// Logging para debugging
-console.log('[INIT] userData path:', app.getPath('userData'));
-console.log('[INIT] Mode:', dev ? 'development' : 'production');
-console.log('[INIT] Platform:', process.platform);
+// Removed development debug logs about paths/mode/platform (database debug removed)
 
 // En desarrollo, también configurar appData
 if (dev) {

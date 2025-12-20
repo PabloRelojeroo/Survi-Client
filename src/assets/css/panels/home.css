@@ -288,7 +288,7 @@
     flex-direction: column;
     justify-content: space-between;
     align-items:  center;
-    width: 90px;
+    width: 120px;
     height: 100vh;
 }
 
@@ -302,8 +302,8 @@
     border-radius: 15px;
     box-shadow: 0 8px 32px var(--shadow);
     margin-top: 2rem;
-    max-height: 60vh;
-    overflow-y: auto;
+    max-height: 80vh;
+    overflow-y: visible;
     animation: fadeIn 0.6s ease-out 0.2s both;
     position: relative;
 }
