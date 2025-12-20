@@ -49,54 +49,99 @@ async function appdata() {
     return await ipcRenderer.invoke('appData').then(path => path)
 }
 
+/**
+ * INSTRUCCIONES: En utils.js, REEMPLAZAR la función addAccount con esta versión
+ */
+
 async function addAccount(data) {
-    let skin = false
-    if (data?.profile?.skins[0]?.base64) skin = await new skin2D().creatHeadTexture(data.profile.skins[0].base64);
-    let div = document.createElement("div");
-    div.classList.add("account");
-    div.id = data.ID;
-    
-    const displayName = data?.name
-        || data?.username
-        || data?.displayName
-        || data?.display_name
-        || data?.profile?.name
-        || data?.profile?.displayName
-        || data?.meta?.name
-        || data?.selectedProfile?.name
-        || data?.availableProfiles?.[0]?.name
-        || 'Unknown';
-    
-    const uuid = data?.uuid 
-        || data?.id 
-        || data?.profile?.id 
-        || data?.profile?.uuid 
-        || data?.selectedProfile?.id 
-        || data?.meta?.uuid
-        || '';
+    try {
+        console.log('🔧 Adding account to UI:', data?.name || 'Unknown');
+        
+        // Validar que data existe
+        if (!data || !data.ID) {
+            console.error('❌ addAccount: Invalid data', data);
+            return null;
+        }
+        
+        // Buscar si ya existe
+        const existingAccount = document.getElementById(data.ID);
+        if (existingAccount) {
+            console.log('✅ Account already exists in UI, updating');
+            // Actualizar el contenido si es necesario
+            return existingAccount;
+        }
+        
+        // Crear skin
+        let skin = false;
+        if (data?.profile?.skins?.[0]?.base64) {
+            try {
+                skin = await new skin2D().creatHeadTexture(data.profile.skins[0].base64);
+            } catch (e) {
+                console.warn('⚠️ Could not create skin texture:', e);
+            }
+        }
+        
+        // Crear elemento div
+        let div = document.createElement("div");
+        div.classList.add("account");
+        div.id = data.ID;
+        
+        // Extraer nombre con múltiples fallbacks
+        const displayName = data?.name
+            || data?.username
+            || data?.displayName
+            || data?.display_name
+            || data?.profile?.name
+            || data?.profile?.displayName
+            || data?.meta?.name
+            || data?.selectedProfile?.name
+            || data?.availableProfiles?.[0]?.name
+            || data?.xboxGamertag
+            || 'Unknown';
+        
+        // Extraer UUID con múltiples fallbacks
+        const uuid = data?.uuid 
+            || data?.id 
+            || data?.profile?.id 
+            || data?.profile?.uuid 
+            || data?.selectedProfile?.id 
+            || data?.meta?.uuid
+            || '';
 
-    if (!data?.name && displayName === 'Unknown') {
-        console.warn('addAccount: missing name fields, data structure:', {
-            hasName: !!data?.name,
-            hasUsername: !!data?.username,
-            hasProfile: !!data?.profile,
-            profileName: data?.profile?.name,
-            meta: data?.meta,
-            keys: Object.keys(data || {})
-        });
+        if (displayName === 'Unknown') {
+            console.error('❌ addAccount: Could not determine display name');
+            console.error('Available keys:', Object.keys(data || {}));
+        }
+
+        // Construir HTML
+        div.innerHTML = `
+            <div class="profile-image" ${skin ? `style="background-image: url(${skin});"` : ''}></div>
+            <div class="profile-infos">
+                <div class="profile-pseudo">${displayName}</div>
+                <div class="profile-uuid">${uuid}</div>
+            </div>
+            <div class="delete-profile" id="${data.ID}">
+                <div class="icon-account-delete delete-profile-icon"></div>
+            </div>
+        `;
+        
+        // Verificar que el contenedor existe
+        const accountsList = document.querySelector('.accounts-list');
+        if (!accountsList) {
+            console.error('❌ .accounts-list container not found in DOM');
+            return null;
+        }
+        
+        // Agregar al DOM
+        const addedElement = accountsList.appendChild(div);
+        console.log('✅ Account added to UI successfully');
+        return addedElement;
+        
+    } catch (error) {
+        console.error('❌ Error in addAccount:', error);
+        console.error('Stack:', error.stack);
+        return null;
     }
-
-    div.innerHTML = `
-        <div class="profile-image" ${skin ? 'style="background-image: url(' + skin + ');"' : ''}></div>
-        <div class="profile-infos">
-            <div class="profile-pseudo">${displayName}</div>
-            <div class="profile-uuid">${uuid}</div>
-        </div>
-        <div class="delete-profile" id="${data.ID}">
-            <div class="icon-account-delete delete-profile-icon"></div>
-        </div>
-    `;
-    return document.querySelector('.accounts-list').appendChild(div);
 }
 
 async function accountSelect(data) {

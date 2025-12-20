@@ -402,99 +402,65 @@ async startGame() {
     this.isGameLaunching = true;
 
     try {
-        console.log('=== INICIO startGame ===');
+        console.log('=== 🚀 INICIO startGame ===');
         
+        // 1. INICIALIZACIÓN
         let launch = new Launch();
-        console.log('✓ Launch instance creada');
+        console.log('✅ Launch instance created');
         
         let configClient = await this.db.readData('configClient');
-        console.log('✓ configClient obtenido:', configClient ? 'OK' : 'NULL');
+        if (!configClient) {
+            throw new Error("❌ No se pudo cargar la configuración");
+        }
+        console.log('✅ Config loaded');
         
         let instance = await config.getInstanceList();
-        console.log('✓ Instance list obtenida:', instance ? instance.length + ' instancias' : 'NULL');
+        console.log(`✅ ${instance.length} instances loaded`);
         
-        let authenticator = await this.db.readData('accounts', configClient?.account_selected);
-        console.log('✓ Authenticator obtenido:', authenticator ? 'OK' : 'NULL');
-
-        // VALIDACIÓN CRÍTICA
+        let authenticator = await this.db.readData('accounts', configClient.account_selected);
         if (!authenticator) {
-            throw new Error("❌ No hay una cuenta seleccionada válida.");
+            throw new Error("❌ No hay cuenta seleccionada");
         }
+        console.log('✅ Authenticator loaded:', authenticator.name || 'Unknown');
 
-        if (!configClient) {
-            throw new Error("❌ No se pudo cargar la configuración del cliente.");
-        }
-
+        // 2. VALIDAR INSTANCIA
         let options = instance.find(i => i.name == configClient.instance_select);
         if (!options) options = this.currentSelectedInstance;
-        
-        console.log('Instancia seleccionada:', options ? options.name : 'NULL');
-        
         if (!options) {
-            throw new Error("❌ No se pudo encontrar la configuración de la instancia seleccionada.");
+            throw new Error("❌ No se encontró la configuración de la instancia");
         }
+        console.log('✅ Instance found:', options.name);
 
-        // VALIDACIÓN Y NORMALIZACIÓN DE LOADER
-        console.log('Validando estructura loader...');
-        
-        // Si loader no existe o es inválido, crear estructura por defecto
+        // 3. NORMALIZAR LOADER
         if (!options.loadder || typeof options.loadder !== 'object') {
-            console.warn('⚠️ options.loadder faltante o inválido, creando estructura por defecto');
+            console.warn('⚠️ Creating default loader structure');
             options.loadder = {
                 loadder_type: 'none',
                 loadder_version: '',
                 minecraft_version: options.minecraft_version || options.version || '1.20.1'
             };
         } else {
-            // Validar y normalizar campos individuales
             options.loadder.minecraft_version = options.loadder.minecraft_version 
                 || options.minecraft_version 
                 || options.version 
                 || '1.20.1';
-                
             options.loadder.loadder_type = options.loadder.loadder_type || 'none';
             options.loadder.loadder_version = options.loadder.loadder_version || '';
         }
+        console.log('✅ Loader:', options.loadder);
 
-        console.log('✓ Loader validado:', JSON.stringify(options.loadder));
-
-        // VALIDACIÓN DE AUTENTICADOR
-        console.log('Validando estructura del autenticador...');
-        
+        // 4. VALIDAR AUTENTICADOR
         const authName = authenticator.name 
             || authenticator.username 
-            || authenticator.displayName
             || authenticator.profile?.name 
             || 'Unknown';
             
-        const authUUID = authenticator.uuid 
-            || authenticator.id 
-            || authenticator.profile?.id 
-            || '';
-
-        console.log('Auth Name:', authName);
-        console.log('Auth UUID:', authUUID);
-
         if (authName === 'Unknown') {
-            console.error('❌ No se pudo determinar el nombre de usuario');
-            throw new Error('La cuenta no tiene un nombre de usuario válido');
+            throw new Error('❌ Nombre de usuario inválido');
         }
+        console.log('✅ Valid authenticator:', authName);
 
-        // Normalizar authenticator
-        authenticator = {
-            ...authenticator,
-            name: authName,
-            uuid: authUUID
-        };
-
-        let playInstanceBTN = document.querySelector('.play-instance');
-        let infoStartingBOX = document.querySelector('.info-starting-game');
-        let infoStarting = document.querySelector(".info-starting-game-text");
-        let progressBar = document.querySelector('.progress-bar');
-
-        // CONSTRUCCIÓN DE OPCIONES DE LANZAMIENTO
-        console.log('Construyendo opciones de lanzamiento...');
-        
+        // 5. CONSTRUIR OPCIONES DE LANZAMIENTO
         const appDataPath = await appdata();
         const dataDir = process.platform == 'darwin' 
             ? this.config.dataDirectory 
@@ -510,70 +476,58 @@ async startGame() {
             detached: configClient.launcher_config.closeLauncher !== "close-all",
             downloadFileMultiple: configClient.launcher_config.download_multi || 5,
             intelEnabledMac: configClient.launcher_config.intelEnabledMac !== false,
-
             loader: {
                 type: options.loadder.loadder_type || 'none',
                 build: options.loadder.loadder_version || '',
                 enable: options.loadder.loadder_type !== 'none'
             },
-
             verify: options.verify !== false,
             ignored: Array.isArray(options.ignored) ? [...options.ignored] : [],
-
             java: {
                 path: configClient.java_config?.java_path || null,
             },
-
             JVM_ARGS: Array.isArray(options.jvm_args) ? options.jvm_args : [],
             GAME_ARGS: Array.isArray(options.game_args) ? options.game_args : [],
-
             screen: {
                 width: configClient.game_config?.screen_size?.width || 854,
                 height: configClient.game_config?.screen_size?.height || 480
             },
-
             memory: {
                 min: `${(configClient.java_config?.java_memory?.min || 2) * 1024}M`,
                 max: `${(configClient.java_config?.java_memory?.max || 4) * 1024}M`
             }
         };
 
-        console.log('✓ Opciones de lanzamiento construidas');
-        console.log('Versión Minecraft:', opt.version);
-        console.log('Loader:', opt.loader);
+        if (!opt.url) throw new Error('❌ URL no definida');
+        if (!opt.version) throw new Error('❌ Versión no definida');
+        
+        console.log('✅ Launch options built');
+        console.log('Versión:', opt.version);
         console.log('Path:', opt.path);
 
-        // VALIDACIÓN FINAL
-        if (!opt.url) {
-            throw new Error('❌ URL de la instancia no definida');
-        }
+        // 6. OBTENER ELEMENTOS UI
+        let playInstanceBTN = document.querySelector('.play-instance');
+        let infoStartingBOX = document.querySelector('.info-starting-game');
+        let infoStarting = document.querySelector(".info-starting-game-text");
+        let progressBar = document.querySelector('.progress-bar');
 
-        if (!opt.version) {
-            throw new Error('❌ Versión de Minecraft no definida');
-        }
-
-        // INTENTAR LANZAMIENTO
-        console.log('🚀 Iniciando lanzamiento...');
-        
-        if (!launch || typeof launch.Launch !== 'function') {
-            throw new Error('❌ La API del launcher no está disponible (falta Launch.Launch)');
-        }
-
+        // 7. INICIAR JUEGO
+        console.log('🎮 Launching game...');
         launch.Launch(opt);
-        console.log('✓ Launch.Launch() ejecutado sin errores');
 
-        // CONFIGURACIÓN DE UI
+        // 8. CONFIGURAR UI
         this.hidePlayButton();
-
         if (infoStartingBOX) infoStartingBOX.style.display = "block";
         if (progressBar) progressBar.style.display = "block";
 
-        // Crear elementos de UI si no existen
+        // 9. CREAR UI DE PROGRESO SI NO EXISTE
         if (!document.querySelector('.download-stats') && infoStartingBOX) {
             const downloadStats = document.createElement('div');
             downloadStats.classList.add('download-stats');
-            downloadStats.innerHTML = `<div class="download-speed">0 MB/s</div><div class="download-eta">...</div>`;
-            infoStartingBOX.insertBefore(downloadStats, progressBar);
+            downloadStats.innerHTML = `
+                <div class="download-speed">0 MB/s</div>
+                <div class="download-eta">...</div>
+            `;
 
             const percentageDisplay = document.createElement('div');
             percentageDisplay.classList.add('progress-percentage');
@@ -581,10 +535,35 @@ async startGame() {
 
             const progressContainer = document.createElement('div');
             progressContainer.classList.add('progress-container');
-            progressContainer.appendChild(progressBar);
-            progressContainer.appendChild(percentageDisplay);
+            
+            // SAFE APPEND - Verificar que progressBar existe y tiene padre
+            if (progressBar && progressBar.parentNode === infoStartingBOX) {
+                const clonedBar = progressBar.cloneNode(true);
+                progressContainer.appendChild(clonedBar);
+                progressContainer.appendChild(percentageDisplay);
+                
+                try {
+                    // Reemplazar de forma segura
+                    infoStartingBOX.replaceChild(progressContainer, progressBar);
+                    progressBar = clonedBar; // Actualizar referencia
+                } catch (e) {
+                    console.warn('⚠️ Could not replace progressBar, appending instead');
+                    progressContainer.appendChild(percentageDisplay);
+                    infoStartingBOX.appendChild(progressContainer);
+                }
+            } else {
+                // Si no hay progressBar o no tiene el padre correcto
+                progressContainer.appendChild(percentageDisplay);
+                infoStartingBOX.appendChild(progressContainer);
+            }
 
-            infoStartingBOX.replaceChild(progressContainer, progressBar);
+            // Insertar stats antes del container
+            const firstChild = infoStartingBOX.firstChild;
+            if (firstChild) {
+                infoStartingBOX.insertBefore(downloadStats, firstChild);
+            } else {
+                infoStartingBOX.appendChild(downloadStats);
+            }
 
             const loadingAnimation = document.createElement('div');
             loadingAnimation.classList.add('loading-animation');
@@ -592,6 +571,7 @@ async startGame() {
             infoStartingBOX.appendChild(loadingAnimation);
         }
 
+        // 10. OBTENER REFERENCIAS UI
         const downloadSpeed = document.querySelector('.download-speed');
         const downloadETA = document.querySelector('.download-eta');
         const percentageDisplay = document.querySelector('.progress-percentage');
@@ -599,14 +579,7 @@ async startGame() {
 
         ipcRenderer.send('main-window-progress-load');
 
-        // EVENT LISTENERS
-        launch.on('extract', extract => {
-            console.log('📦 Extrayendo archivos...');
-            ipcRenderer.send('main-window-progress-load');
-            if (infoStarting) infoStarting.innerHTML = `Extrayendo archivos`;
-            if (percentageDisplay) percentageDisplay.textContent = 'Preparando...';
-        });
-
+        // 11. CONFIGURAR EVENT LISTENERS
         let lastProgressUpdate = Date.now();
         let lastBytesLoaded = 0;
         let averageSpeed = 0;
@@ -623,6 +596,13 @@ async startGame() {
             if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
             return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
         };
+
+        launch.on('extract', extract => {
+            console.log('📦 Extracting files...');
+            ipcRenderer.send('main-window-progress-load');
+            if (infoStarting) infoStarting.innerHTML = `Extrayendo archivos`;
+            if (percentageDisplay) percentageDisplay.textContent = 'Preparando...';
+        });
 
         launch.on('progress', (progress, size) => {
             if (!isNaN(progress) && isFinite(progress) && !isNaN(size) && isFinite(size) && size > 0) {
@@ -666,7 +646,7 @@ async startGame() {
         });
 
         launch.on('check', (progress, size) => {
-            console.log('✅ Verificando archivos...');
+            console.log('✅ Checking files...');
             if (infoStarting) infoStarting.innerHTML = `Verificando archivos`;
             
             const percent = ((progress / size) * 100).toFixed(0);
@@ -684,7 +664,7 @@ async startGame() {
         });
 
         launch.on('patch', patch => {
-            console.log('🔧 Aplicando parches...');
+            console.log('🔧 Patching...');
             ipcRenderer.send('main-window-progress-load');
 
             if (infoStarting) infoStarting.innerHTML = `<span class="game-running">Juego en curso</span>`;
@@ -699,6 +679,7 @@ async startGame() {
 
             if (progressBar) progressBar.style.display = "none";
             if (loadingAnimation) loadingAnimation.style.display = "none";
+            
             if (configClient.launcher_config.closeLauncher == 'close-launcher') {
                 ipcRenderer.send("main-window-hide");
             }
@@ -711,7 +692,7 @@ async startGame() {
         });
 
         launch.on('close', code => {
-            console.log(`🔴 Minecraft cerrado con código: ${code}`);
+            console.log(`🔴 Minecraft closed with code: ${code}`);
             this.isGameLaunching = false;
 
             if (configClient.launcher_config.closeLauncher == 'close-launcher') {
@@ -732,7 +713,7 @@ async startGame() {
         });
 
         launch.on('error', err => {
-            console.error("❌ Error del launcher:", err);
+            console.error("❌ Launcher error:", err);
             this.isGameLaunching = false;
 
             let popupError = new popup();
@@ -763,12 +744,12 @@ async startGame() {
             new logger(pkg.name, '#7289da');
         });
 
-        console.log('=== startGame completado sin excepciones ===');
+        console.log('=== ✅ startGame completed ===');
 
     } catch (error) {
-        console.error("❌ Excepción fatal en startGame:");
-        console.error("Tipo:", error.constructor.name);
-        console.error("Mensaje:", error.message);
+        console.error("❌ Fatal exception in startGame:");
+        console.error("Type:", error.constructor.name);
+        console.error("Message:", error.message);
         console.error("Stack:", error.stack);
         
         this.isGameLaunching = false;
@@ -776,7 +757,7 @@ async startGame() {
         let popupError = new popup();
         popupError.openPopup({
             title: 'Error Fatal',
-            content: `${error.message || 'Error desconocido'}<br><br>Revisa la consola para más detalles.`,
+            content: `${error.message || 'Error desconocido'}<br><br>Revisa la consola (F12) para más detalles.`,
             color: 'red',
             options: true
         });
